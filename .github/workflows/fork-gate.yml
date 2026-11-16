@@ -329,13 +329,16 @@ jobs:
           apk="$(find android/app/build/outputs/apk/fdroid -name '*.apk' | head -1)"
           echo "apk: $apk"
           aapt2="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
-          "$aapt2" dump badging "$apk" | head -1 | tee badging.txt
+          "$aapt2" dump badging "$apk" > badging-full.txt
+          head -1 badging-full.txt | tee badging.txt
           code="$(node -e 'import("./fork/apply-identity.mjs").then(m=>console.log(m.versionCode(m.parseTag(process.argv[1]))))' "$TAG")"
           grep -q "package: name='io.github.daniilmann.sptelos'" badging.txt
           grep -q "versionCode='${code}'" badging.txt
           grep -q "versionName='${TAG#v}'" badging.txt
-          "$aapt2" dump xmltree --file AndroidManifest.xml "$apk" | grep -q 'android.app.shortcuts'
-          "$aapt2" dump xmltree --file res/xml/shortcuts.xml "$apk" | tee shortcuts.txt | grep 'targetPackage' || true
+          "$aapt2" dump xmltree --file AndroidManifest.xml "$apk" > manifest.txt
+          grep -q 'android.app.shortcuts' manifest.txt
+          "$aapt2" dump xmltree --file res/xml/shortcuts.xml "$apk" > shortcuts.txt
+          grep 'targetPackage' shortcuts.txt
           [ "$(grep -c 'targetPackage.*"io.github.daniilmann.sptelos"' shortcuts.txt)" -eq 3 ]
           ! grep -q 'com.superproductivity.superproductivity' shortcuts.txt
       - name: Signing certificate
