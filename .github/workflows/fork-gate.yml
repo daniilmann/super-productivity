@@ -230,7 +230,7 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
-          command: npm install @nx/nx-darwin-arm64 dmg-license && npm i
+          command: npm install "@nx/nx-darwin-$(node -p process.arch)" dmg-license && npm i
       - name: Version substitution
         env:
           TAG: ${{ needs.version.outputs.tag }}
