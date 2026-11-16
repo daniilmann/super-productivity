@@ -1,0 +1,26 @@
+# Fork build settings on top of the upstream electron-builder.yaml (see FORK.md, "App identity").
+# Use: npx electron-builder --mac --config fork/electron-builder.fork.yaml --publish never
+# Upstream electron-builder.yaml and package.json are not edited.
+extends: ./electron-builder.yaml
+
+appId: io.github.daniilmann.sptelos
+# Display name only; the data folder follows extraMetadata.name.
+productName: SP Telos
+extraMetadata:
+  name: superProductivityTelos
+
+mac:
+  appId: io.github.daniilmann.sptelos
+  # Ad-hoc signature: no Apple certificate, no notarization.
+  identity: '-'
+  notarize: false
+  provisioningProfile: null
+  publish: null
+  target:
+    - target: dmg
+      arch:
+        - universal
+
+dmg:
+  sign: false
+  publish: null
