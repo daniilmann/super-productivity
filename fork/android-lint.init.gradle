@@ -1,0 +1,12 @@
+// Gradle init script: Android Lint baseline for the fork gate, without editing build.gradle.
+// The baseline is taken on the pinned upstream tag; new error-level issues fail the gate.
+// Use: ./gradlew --init-script ../fork/android-lint.init.gradle :app:lintFdroidDebug
+// Refresh: ./gradlew --init-script ../fork/android-lint.init.gradle :app:updateLintBaselineFdroidDebug
+allprojects { project ->
+    project.plugins.withId('com.android.application') {
+        def baseline = new File(project.rootDir.parentFile, 'fork/android-lint-baseline.xml')
+        project.extensions.getByName('android').lint {
+            it.baseline = baseline
+        }
+    }
+}

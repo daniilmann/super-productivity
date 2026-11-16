@@ -38,7 +38,7 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 
 | # | Change | Upstream files | Kind | Check |
 |---|---|---|---|---|
-| 1 | Upstream workflows | `.github/workflows/` | removal | gate guard: only the workflows listed below exist |
+| 1 | Upstream workflows | `.github/workflows/` | removal | gate guard: only the workflows listed below exist. Upstream tool tests that read removed workflows are skipped in the upstream lint chain: `fork/run-upstream-lint.mjs` |
 | 2 | `LAUNCH_MODE=2` | `android/app/app_config.properties` | permanent | `fork/android-files.test.mjs` |
 | 3 | `version` | `package.json`, `packages/plugin-api/package.json` | build-time substitution | `fork/apply-identity.mjs`; release artifacts |
 | 4 | `applicationId`, `versionCode`, `versionName`; `targetPackage` of the three shortcuts | `android/app/build.gradle`; `android/app/src/main/res/xml/shortcuts.xml` | build-time substitution | `fork/apply-identity.mjs --check` in the gate; APK manifest check |
@@ -55,3 +55,6 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 - `.github/workflows/fork-gate.yml`
 
 Upstream composite actions in `.github/actions/` are reused as they are.
+
+Android Lint runs against `fork/android-lint-baseline.xml`, taken on the pinned upstream tag and applied by
+the Gradle init script `fork/android-lint.init.gradle` (no change to `build.gradle`). New error-level issues fail the gate.
