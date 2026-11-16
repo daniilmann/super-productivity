@@ -1,0 +1,1647 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 8.13.0" type="baseline" client="gradle" dependencies="false" name="AGP (8.13.0)" variant="all" version="8.13.0">
+
+    <issue
+        id="MissingPermission"
+        message="Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with `checkPermission`) or explicitly handle a potential `SecurityException`"
+        errorLine1="            NotificationManagerCompat.from(this).notify("
+        errorLine2="            ^">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/FocusModeForegroundService.kt"
+            line="446"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="MissingPermission"
+        message="Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with `checkPermission`) or explicitly handle a potential `SecurityException`"
+        errorLine1="            NotificationManagerCompat.from(this).notify("
+        errorLine2="            ^">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/TrackingForegroundService.kt"
+            line="419"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ScopedStorage"
+        message="READ_EXTERNAL_STORAGE is deprecated (and is not granted) when targeting Android 13+. If you need to query or interact with MediaStore or media files on the shared storage, you should instead use one or more new storage permissions: `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` or `READ_MEDIA_AUDIO`."
+        errorLine1="  &lt;uses-permission android:name=&quot;android.permission.READ_EXTERNAL_STORAGE&quot; />"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="8"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="ScopedStorage"
+        message="WRITE_EXTERNAL_STORAGE is deprecated (and is not granted) when targeting Android 13+. If you need to write to shared storage, use the `MediaStore.createWriteRequest` intent."
+        errorLine1="  &lt;uses-permission android:name=&quot;android.permission.WRITE_EXTERNAL_STORAGE&quot; />"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="9"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="GestureBackNavigation"
+        message="`onBackPressed` is no longer called for back gestures; migrate to AndroidX&apos;s backward compatible `OnBackPressedDispatcher`"
+        errorLine1="    override fun onBackPressed() {"
+        errorLine2="                 ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="431"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="WebViewApiAvailability"
+        message="Consider using `WebViewCompat.getCurrentWebViewPackage` instead which will support more devices."
+        errorLine1="            val pkg = getCurrentWebViewPackage()"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/util/PrintWebViewVersion.kt"
+            line="36"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="WebViewApiAvailability"
+        message="Consider using `WebViewCompat.getCurrentWebViewPackage` instead which will support more devices."
+        errorLine1="                WebView.getCurrentWebViewPackage()?.let {"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="408"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        editor.commit()"
+        errorLine2="               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="134"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            .commit()"
+        errorLine2="             ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="153"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        editor.commit()"
+        errorLine2="               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="175"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        editor.commit()"
+        errorLine2="               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="192"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        editor.commit()"
+        errorLine2="               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="211"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        editor.commit()"
+        errorLine2="               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="219"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        editor.commit()"
+        errorLine2="               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="244"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        getPrefs(context).edit().putString(KEY_DERIVED_KEY_CACHE, value).commit()"
+        errorLine2="                                                                         ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="260"
+            column="74"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            .commit()"
+        errorLine2="             ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="272"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        getPrefs(context).edit().putLong(KEY_REMOTE_STOP_AT, at).commit()"
+        errorLine2="                                                                 ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="58"
+            column="66"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().remove(KEY_REMOTE_STOP_AT).commit()"
+        errorLine2="                                                ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="72"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().putString(key, array.toString()).commit()"
+        errorLine2="                                                      ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="81"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs.edit().remove(key).commit()"
+        errorLine2="                                     ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="88"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().putString(KEY_ALARMS, filtered.toString()).commit()"
+        errorLine2="                                                                ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="70"
+            column="65"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().putString(KEY_ALARMS, filtered.toString()).commit()"
+        errorLine2="                                                                ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="87"
+            column="65"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs.edit().putString(KEY_ALARMS, futureEntries.toString()).commit()"
+        errorLine2="                                                                         ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="124"
+            column="74"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        getPrefs(context).edit().remove(KEY_ALARMS).commit()"
+        errorLine2="                                                    ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="132"
+            column="53"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().putString(KEY_DONE_TASKS, array.toString()).commit()"
+        errorLine2="                                                                 ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderDoneQueue.kt"
+            line="25"
+            column="66"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs.edit().remove(KEY_DONE_TASKS).commit()"
+        errorLine2="                                                ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderDoneQueue.kt"
+            line="33"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().putString(KEY_SNOOZE_EVENTS, array.toString()).commit()"
+        errorLine2="                                                                    ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderSnoozeQueue.kt"
+            line="32"
+            column="69"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs.edit().remove(KEY_SNOOZE_EVENTS).commit()"
+        errorLine2="                                                   ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderSnoozeQueue.kt"
+            line="40"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        getPrefs(context).edit().putString(KEY_TAP_TASK_ID, taskId).commit()"
+        errorLine2="                                                                    ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderTapQueue.kt"
+            line="22"
+            column="69"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs.edit().remove(KEY_TAP_TASK_ID).commit()"
+        errorLine2="                                                 ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderTapQueue.kt"
+            line="30"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().remove(KEY_PENDING_SHARE).commit()"
+        errorLine2="                                               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ShareIntentQueue.kt"
+            line="31"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        getPrefs(context).edit().clear().commit()"
+        errorLine2="                                         ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/TrackingStateStore.kt"
+            line="216"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        preferences(context).edit().putBoolean(KEY_BLOCK_OVERRIDE, enabled).commit()"
+        errorLine2="                                                                            ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="210"
+            column="77"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        preferences(context).edit().putLong(KEY_INIT_RETRY_AT, now).commit()"
+        errorLine2="                                                                    ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="262"
+            column="69"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().putString(KEY_DONE_TASKS, map.toString()).commit()"
+        errorLine2="                                                               ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/WidgetDoneQueue.kt"
+            line="38"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs.edit().remove(KEY_DONE_TASKS).commit()"
+        errorLine2="                                                ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/WidgetDoneQueue.kt"
+            line="59"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="        prefs.edit().remove(KEY_TASK_QUEUE).commit()"
+        errorLine2="                                            ~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/WidgetTaskQueue.kt"
+            line="29"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="DefaultLocale"
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
+        errorLine1="        return String.format(&quot;%d:%02d&quot;, minutes, seconds)"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/FocusModeNotificationHelper.kt"
+            line="138"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="InlinedApi"
+        message="Field requires API level 30 (current min is 24): `android.app.ApplicationExitInfo#REASON_USER_REQUESTED`"
+        errorLine1="                reason == ApplicationExitInfo.REASON_USER_REQUESTED"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/TrackingStateStore.kt"
+            line="74"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 28 (current min is 24): `android.content.pm.PackageInfo#getLongVersionCode`"
+        errorLine1="            packageInfo?.let { parseMajorVersion(it.versionName) ?: parseMajorVersion(it.longVersionCode) }"
+        errorLine2="                                                                                         ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="114"
+            column="90"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdkVersion 36"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="21"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `previewLayout` is only used in API level 31 and higher (current min is 24)"
+        errorLine1="    android:previewLayout=&quot;@layout/widget_task_list&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/appwidget_info.xml"
+            line="4"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 24)"
+        errorLine1="    android:shortcutId=&quot;add-task&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/shortcuts.xml"
+            line="16"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 24)"
+        errorLine1="    android:shortcutShortLabel=&quot;@string/shortcut_add_task&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/shortcuts.xml"
+            line="19"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 24)"
+        errorLine1="    android:shortcutId=&quot;today&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/shortcuts.xml"
+            line="27"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 24)"
+        errorLine1="    android:shortcutShortLabel=&quot;@string/shortcut_today&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/shortcuts.xml"
+            line="30"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 24)"
+        errorLine1="    android:shortcutId=&quot;inbox&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/shortcuts.xml"
+            line="38"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 24)"
+        errorLine1="    android:shortcutShortLabel=&quot;@string/shortcut_inbox&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/shortcuts.xml"
+            line="41"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="WrongConstant"
+        message="Must be one or more of: Intent.FLAG_GRANT_READ_URI_PERMISSION, Intent.FLAG_GRANT_WRITE_URI_PERMISSION"
+        errorLine1="                    context.contentResolver.takePersistableUriPermission(uri, grantedFlags)"
+        errorLine2="                                                                              ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/SafBridgePlugin.kt"
+            line="55"
+            column="79"/>
+    </issue>
+
+    <issue
+        id="AppLinkUrlError"
+        message="At least one `host` must be specified"
+        errorLine1="        &lt;data"
+        errorLine2="        ^">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="174"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="        &lt;data"
+        errorLine2="        ^">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="191"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="        &lt;data"
+        errorLine2="        ^">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="194"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="        &lt;data"
+        errorLine2="        ^">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="197"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="        &lt;data"
+        errorLine2="        ^">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="200"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="        &lt;data"
+        errorLine2="        ^">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="203"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="VectorRaster"
+        message="Limit vector icons sizes to 200×200 to keep icon drawing fast; see https://developer.android.com/studio/write/vector-asset-studio#when for more"
+        errorLine1="    android:width=&quot;288dp&quot;"
+        errorLine2="                   ~~~~~">
+        <location
+            file="src/main/res/drawable/ic_splash.xml"
+            line="20"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of Gradle than 8.14.3 is available: 8.14.7"
+        errorLine1="distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-all.zip"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="$HOME/work/super-productivity/super-productivity/android/gradle/wrapper/gradle-wrapper.properties"
+            line="3"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.appcompat:appcompat than 1.7.0 is available: 1.8.0"
+        errorLine1="    implementation &quot;androidx.appcompat:appcompat:1.7.0&quot;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="162"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.androidbrowserhelper:androidbrowserhelper than 2.5.0 is available: 2.7.4"
+        errorLine1="    implementation &quot;com.google.androidbrowserhelper:androidbrowserhelper:2.5.0&quot;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="163"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.16.0 is available: 1.19.1"
+        errorLine1="    implementation &quot;androidx.core:core-ktx:1.16.0&quot;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="165"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.work:work-runtime-ktx than 2.10.0 is available: 2.12.0"
+        errorLine1="    implementation &apos;androidx.work:work-runtime-ktx:2.10.0&apos;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="167"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.security:security-crypto than 1.1.0-alpha06 is available: 1.1.0"
+        errorLine1="    implementation &apos;androidx.security:security-crypto:1.1.0-alpha06&apos;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="168"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-process than 2.8.7 is available: 2.11.0"
+        errorLine1="    implementation &apos;androidx.lifecycle:lifecycle-process:2.8.7&apos;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="169"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of com.google.android.gms:play-services-auth than 21.3.0 is available: 22.0.0"
+        errorLine1="    playImplementation &quot;com.google.android.gms:play-services-auth:21.3.0&quot;"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="173"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test:core than 1.6.1 is available: 1.7.0"
+        errorLine1="    androidTestImplementation &quot;androidx.test:core:1.6.1&quot;"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="197"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.test:rules than 1.6.1 is available: 1.7.0"
+        errorLine1="    androidTestImplementation &quot;androidx.test:rules:1.6.1&quot;"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="198"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.work:work-testing than 2.10.0 is available: 2.12.0"
+        errorLine1="    androidTestImplementation &quot;androidx.work:work-testing:2.10.0&quot;"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="204"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.5.1"
+        errorLine1="    implementation &apos;com.squareup.okhttp3:okhttp:4.12.0&apos;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="160"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.7.3 is available: 1.11.0"
+        errorLine1="    implementation &apos;org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3&apos;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="161"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.google.code.gson:gson than 2.10.1 is available: 2.15.0"
+        errorLine1="    implementation &quot;com.google.code.gson:gson:2.10.1&quot;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="164"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.anggrayudi:storage than 1.5.4 is available: 3.1.0"
+        errorLine1="    implementation &quot;com.anggrayudi:storage:1.5.4&quot;"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="171"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.json:json than 20240303 is available: 20260814"
+        errorLine1="    testImplementation &quot;org.json:json:20240303&quot;"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="193"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.squareup.okhttp3:mockwebserver than 4.12.0 is available: 5.5.1"
+        errorLine1="    testImplementation &quot;com.squareup.okhttp3:mockwebserver:4.12.0&quot;"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="195"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.squareup.okhttp3:mockwebserver than 4.12.0 is available: 5.5.1"
+        errorLine1="    androidTestImplementation &quot;com.squareup.okhttp3:mockwebserver:4.12.0&quot;"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle"
+            line="201"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="        if (!WebViewCompatibilityChecker.isLikelyWebViewInitFailure(error)) {"
+        errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/CapacitorMainActivity.kt"
+            line="316"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="            if (!WebViewCompatibilityChecker.isLikelyWebViewInitFailure(e)) {"
+        errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="358"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="        if (!WebViewCompatibilityChecker.isLikelyWebViewInitFailure(error)) {"
+        errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="368"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="    if (error is Exception || WebViewCompatibilityChecker.isLikelyWebViewInitFailure(error)) {"
+        errorLine2="                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/util/PrintWebViewVersion.kt"
+            line="57"
+            column="59"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="        val source = WebViewCompatibilityChecker.sourceFromName(intent.getStringExtra(EXTRA_SOURCE))"
+        errorLine2="                                                 ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewBlockActivity.kt"
+            line="46"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="        val config = WebViewCompatibilityChecker.blockScreenConfig("
+        errorLine2="                                                 ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewBlockActivity.kt"
+            line="47"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="VisibleForTests"
+        message="This method should only be accessed from tests or within private scope"
+        errorLine1="        val pkg = WebViewCompatibilityChecker.providerPackageOrDefault(provider)"
+        errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewBlockActivity.kt"
+            line="153"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="UseAppTint"
+        message="Must use `app:tint` instead of `android:tint`"
+        errorLine1="            android:tint=&quot;@color/widget_brand&quot;"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_task_list.xml"
+            line="26"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UnsafeIntentLaunch"
+        message="This intent could be coming from an untrusted source. It is later launched by an unprotected component com.superproductivity.superproductivity.FullscreenActivity. You could either make the component com.superproductivity.superproductivity.FullscreenActivity protected; or sanitize this intent using androidx.core.content.IntentSanitizer."
+        errorLine1="            val intent = intent"
+        errorLine2="                         ~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="129"
+            column="26"/>
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="132"
+            column="13"
+            message="The unsafe intent is launched here."/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 24"
+        errorLine1="    @RequiresApi(Build.VERSION_CODES.N)"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="243"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is always >= 24"
+        errorLine1="            swController.setServiceWorkerClient(@RequiresApi(Build.VERSION_CODES.N)"
+        errorLine2="                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/FullscreenActivity.kt"
+            line="266"
+            column="49"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v24`) is unnecessary; `minSdkVersion` is 24. Merge all the resources in this folder into `drawable-anydpi`.">
+        <location
+            file="src/main/res/drawable-anydpi-v24"/>
+    </issue>
+
+    <issue
+        id="MergeRootFrame"
+        message="This `&lt;FrameLayout>` can be replaced with a `&lt;merge>` tag"
+        errorLine1="&lt;FrameLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2="^">
+        <location
+            file="src/main/res/layout/activity_fullscreen.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="Overdraw"
+        message="Possible overdraw: Root element paints background `#111111` with a theme that also paints a background (inferred theme is `@style/AppTheme_NoActionBar`)"
+        errorLine1="    android:background=&quot;#111111&quot;>"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/activity_webview_block.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.xml.config` appears to be unused"
+        errorLine1="&lt;widget version=&quot;1.0.0&quot; xmlns=&quot;http://www.w3.org/ns/widgets&quot; xmlns:cdv=&quot;http://cordova.apache.org/ns/1.0&quot;>"
+        errorLine2="^">
+        <location
+            file="src/main/res/xml/config.xml"
+            line="2"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_add` appears to be unused">
+        <location
+            file="src/main/res/drawable-mdpi/ic_add.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_done` appears to be unused">
+        <location
+            file="src/main/res/drawable-mdpi/ic_done.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_pause` appears to be unused">
+        <location
+            file="src/main/res/drawable-mdpi/ic_pause.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_stat_play` appears to be unused">
+        <location
+            file="src/main/res/drawable-mdpi/ic_stat_play.png"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.drawable.ic_stat_sync` appears to be unused">
+        <location
+            file="src/main/res/drawable-mdpi/ic_stat_sync.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_done.png, ic_pause.png">
+        <location
+            file="src/main/res/drawable-mdpi/ic_pause.png"/>
+        <location
+            file="src/main/res/drawable-mdpi/ic_done.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_done.png, ic_pause.png">
+        <location
+            file="src/main/res/drawable-xhdpi/ic_pause.png"/>
+        <location
+            file="src/main/res/drawable-xhdpi/ic_done.png"/>
+    </issue>
+
+    <issue
+        id="IconDuplicates"
+        message="The following unrelated icon files have identical contents: ic_done.png, ic_pause.png">
+        <location
+            file="src/main/res/drawable-xxhdpi/ic_pause.png"/>
+        <location
+            file="src/main/res/drawable-xxhdpi/ic_done.png"/>
+    </issue>
+
+    <issue
+        id="IconMissingDensityFolder"
+        message="Missing density variation folders in `src/main/res`: drawable-hdpi">
+        <location
+            file="src/main/res"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(context).edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundReminderSettingsStore.kt"
+            line="27"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = prefs.edit()"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="126"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="148"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = prefs.edit()"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="165"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = getPrefs(context).edit()"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="190"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = getPrefs(context).edit().putString(KEY_FILE_REMINDER_SLOTS, reminderSlotsJson)"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="209"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = getPrefs(context).edit()"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="217"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = prefs.edit().remove(KEY_DERIVED_KEY_CACHE).remove(KEY_FILE_ETAG)"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="238"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit().putString(KEY_DERIVED_KEY_CACHE, value).commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="260"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/BackgroundSyncCredentialStore.kt"
+            line="270"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = prefs(context).edit()"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/share/CaptureKeyStore.kt"
+            line="22"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                    data = Uri.parse(&quot;package:${activity.packageName}&quot;)"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/JavaScriptInterface.kt"
+            line="697"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                    data = Uri.parse(&quot;package:${activity.packageName}&quot;)"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/JavaScriptInterface.kt"
+            line="697"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                    sharedPrefs.edit().putInt(LAUNCH_MODE_KEY, newMode).apply()"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/app/LaunchDecider.kt"
+            line="59"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val editor = prefs.edit()"
+        errorLine2="                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/app/LaunchUrlReplayGuard.kt"
+            line="61"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            val parsedColor = Color.parseColor(color)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/NavigationBarPlugin.kt"
+            line="27"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="            val parsedColor = Color.parseColor(color)"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/NavigationBarPlugin.kt"
+            line="80"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Int.toDrawable` instead?"
+        errorLine1="                activity.window.setBackgroundDrawable(ColorDrawable(parsedColor))"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/NavigationBarPlugin.kt"
+            line="83"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit().putLong(KEY_REMOTE_STOP_AT, at).commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="58"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().remove(KEY_REMOTE_STOP_AT).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="72"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(key, array.toString()).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="81"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().remove(key).commit()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/NotificationActionQueue.kt"
+            line="88"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(KEY_ALARMS, filtered.toString()).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="70"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(KEY_ALARMS, filtered.toString()).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="87"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putString(KEY_ALARMS, futureEntries.toString()).commit()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="124"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit().remove(KEY_ALARMS).commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/ReminderAlarmStore.kt"
+            line="132"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(KEY_DONE_TASKS, array.toString()).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderDoneQueue.kt"
+            line="25"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().remove(KEY_DONE_TASKS).commit()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderDoneQueue.kt"
+            line="33"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(KEY_SNOOZE_EVENTS, array.toString()).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderSnoozeQueue.kt"
+            line="32"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().remove(KEY_SNOOZE_EVENTS).commit()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderSnoozeQueue.kt"
+            line="40"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit().putString(KEY_TAP_TASK_ID, taskId).commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderTapQueue.kt"
+            line="22"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().remove(KEY_TAP_TASK_ID).commit()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ReminderTapQueue.kt"
+            line="30"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            val treeUri = Uri.parse(uriString)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/SafBridgePlugin.kt"
+            line="90"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            val treeUri = Uri.parse(uriString)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/SafBridgePlugin.kt"
+            line="127"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            val treeUri = Uri.parse(uriString)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/SafBridgePlugin.kt"
+            line="167"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            val treeUri = Uri.parse(uriString)"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/SafBridgePlugin.kt"
+            line="200"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            val uri = Uri.parse(uriString)"
+        errorLine2="                      ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/plugins/SafBridgePlugin.kt"
+            line="220"
+            column="23"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().remove(KEY_PENDING_SHARE).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/ShareIntentQueue.kt"
+            line="31"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/TaskListWidgetProvider.kt"
+            line="205"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/TaskListWidgetProvider.kt"
+            line="205"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toColorInt` instead?"
+        errorLine1="                Color.parseColor(it)"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/TaskListWidgetService.kt"
+            line="72"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getPrefs(context).edit().clear().commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/service/TrackingStateStore.kt"
+            line="216"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().remove(KEY_INIT_RETRY_AT).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="190"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val edit = prefs.edit()"
+        errorLine2="                   ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="197"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences(context).edit().putBoolean(KEY_BLOCK_OVERRIDE, enabled).commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="210"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        preferences(context).edit().putLong(KEY_INIT_RETRY_AT, now).commit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="262"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse(webViewProviderDetailsUri(providerPackage)))"
+        errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="539"
+            column="62"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            Uri.parse(webViewUpdatePageUrl(providerPackage)),"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewCompatibilityChecker.kt"
+            line="546"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/webview/WebViewRequestHandler.kt"
+            line="30"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(KEY_DONE_TASKS, map.toString()).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/WidgetDoneQueue.kt"
+            line="38"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().remove(KEY_DONE_TASKS).commit()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/WidgetDoneQueue.kt"
+            line="59"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().remove(KEY_TASK_QUEUE).commit()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/com/superproductivity/superproductivity/widget/WidgetTaskQueue.kt"
+            line="29"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Empty `contentDescription` attribute on image"
+        errorLine1="            android:contentDescription=&quot;&quot; />"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_task_list.xml"
+            line="27"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Empty `contentDescription` attribute on image"
+        errorLine1="        android:contentDescription=&quot;&quot; />"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_task_row.xml"
+            line="18"
+            column="9"/>
+    </issue>
+
+</issues>
