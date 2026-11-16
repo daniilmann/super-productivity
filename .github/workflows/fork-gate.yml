@@ -262,8 +262,10 @@ jobs:
       - name: Upstream spec code is not in the build
         run: |
           set -euo pipefail
-          grep -rhoE "\bit\('[^']{40,}'" src --include='*.spec.ts' | sed -E "s/^it\('//; s/'$//" | sort -u | head -200 > spec-titles.txt
-          wc -l < spec-titles.txt
+          grep -rhoE "\bit\('[^']{40,}'" src --include='*.spec.ts' | sed -E "s/^it\('//; s/'$//" | sort -u > spec-titles-all.txt
+          head -200 spec-titles-all.txt > spec-titles.txt
+          echo "spec titles checked: $(wc -l < spec-titles.txt)"
+          [ -s spec-titles.txt ]
           if grep -rFf spec-titles.txt .tmp/angular-dist; then echo "::error::spec titles found in the build"; exit 1; fi
           echo "no spec titles in the build"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
