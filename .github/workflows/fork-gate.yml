@@ -214,7 +214,8 @@ jobs:
   build-mac:
     name: macOS DMG (ad-hoc)
     needs: version
-    runs-on: macos-15
+    # arm64 macOS runners were not acquired (capacity); the universal DMG builds on Intel too.
+    runs-on: macos-15-intel
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
@@ -340,7 +341,10 @@ jobs:
           "$aapt2" dump xmltree --file res/xml/shortcuts.xml "$apk" > shortcuts.txt
           grep 'targetPackage' shortcuts.txt
           [ "$(grep -c 'targetPackage.*"io.github.daniilmann.sptelos"' shortcuts.txt)" -eq 3 ]
-          ! grep -q 'com.superproductivity.superproductivity' shortcuts.txt
+          if grep 'targetPackage' shortcuts.txt | grep -q '"com.superproductivity.superproductivity"'; then
+            echo "::error::an upstream targetPackage is left in shortcuts.xml"; exit 1
+          fi
+          echo "APK manifest and shortcuts ok"
       - name: Signing certificate
         run: |
           set -euo pipefail
