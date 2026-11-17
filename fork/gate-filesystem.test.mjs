@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import childProcess, { execFileSync } from 'node:child_process';
 import {
   copyFileSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -183,4 +185,77 @@ void test('real Git copy destination remains linted when copy detection is enabl
     ),
   );
   assert.deepEqual(collectLintFiles(root), ['copy.ts']);
+});
+
+void test('lint and budget detect every edited rename despite repository diff.renameLimit=1', (t) => {
+  const { root, base } = repository(t);
+  const renames = [
+    ['target.ts', 'renamed target.ts'],
+    ['upstream.ts', 'renamed upstream.ts'],
+  ];
+  git(root, 'config', '--local', 'diff.renameLimit', '1');
+  assert.equal(git(root, 'config', '--local', '--get', 'diff.renameLimit').trim(), '1');
+  for (const [oldPath, path] of renames) {
+    git(root, 'mv', oldPath, path);
+    put(root, path, readFileSync(join(root, path), 'utf8') + '// addition\n'.repeat(11));
+  }
+  commit(root);
+  const args = [
+    'diff',
+    '--no-ext-diff',
+    '--no-renames',
+    '--find-renames',
+    '--name-status',
+    '-z',
+    `${base}...HEAD`,
+    '--',
+  ];
+  const limited = parseNameStatus(git(root, ...args));
+  assert.deepEqual(
+    limited.filter(({ status }) => status === 'R'),
+    [],
+    'The fixture must exceed the configured inexact rename limit',
+  );
+  const paths = renames.map(([, path]) => path);
+  assert.deepEqual(
+    limited.filter(({ status, path }) => status === 'A' && paths.includes(path)),
+    paths.map((path) => ({ status: 'A', path })),
+  );
+  assert.deepEqual(
+    parseNameStatus(git(root, ...args.slice(0, 1), '-l0', ...args.slice(1))).filter(
+      ({ status }) => status === 'R',
+    ),
+    renames.map(([oldPath, path]) => ({ status: 'R', oldPath, path })),
+  );
+  // Spy on the real Git calls; the default mock implementation still executes Git.
+  const runGit = t.mock.method(childProcess, 'execFileSync');
+  syncBuiltinESMExports();
+  try {
+    assert.deepEqual(collectLintFiles(root), paths);
+    assert.deepEqual(
+      checkRepositoryBudget(root),
+      paths.map((path) => `BUDGET_EXCEEDED: ${path}: added 11 > limit 10`),
+    );
+    const diffs = runGit.mock.calls.filter(
+      ({ arguments: [command, argv] }) =>
+        command === 'git' && Array.isArray(argv) && argv[0] === 'diff',
+    );
+    assert.equal(diffs.length, 3, 'Lint name-status, budget name-status and numstat');
+    for (const {
+      arguments: [, argv],
+      result,
+    } of diffs) {
+      assert.ok(Array.isArray(argv));
+      assert.ok(argv.includes('-l0'), JSON.stringify(argv));
+      if (argv.includes('--name-status')) {
+        assert.deepEqual(
+          parseNameStatus(String(result)).filter(({ status }) => status === 'R'),
+          renames.map(([oldPath, path]) => ({ status: 'R', oldPath, path })),
+        );
+      }
+    }
+  } finally {
+    runGit.mock.restore();
+    syncBuiltinESMExports();
+  }
 });

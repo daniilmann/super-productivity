@@ -22,6 +22,12 @@ void test('strict policy accepts one json fence immediately after each policy pa
   });
 });
 
+void test('budget rejects an extra key beside maxAddedLinesPerFile', () => {
+  assert.throws(() => parseForkPolicy(policy('{"maxAddedLinesPerFile":20,"note":1}')), {
+    code: 'ERR_FORK_POLICY',
+  });
+});
+
 for (const json of [
   '{"maxAddedLinesPerFile":10,"maxAddedLinesPerFile":999}',
   '{"maxAddedLinesPerFile":999,"maxAddedLinesPerFile":10}',

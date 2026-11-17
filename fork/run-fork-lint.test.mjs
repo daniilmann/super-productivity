@@ -126,6 +126,27 @@ void test('a noInlineConfig warning mentioning ignored does not mean the file wa
   assert.ok(!errors.includes(`ESLINT_IGNORED: ${FILES[0]}`));
 });
 
+void test('an ESLint outside-base-path warning reports the exact ignored file', () => {
+  const path = FILES[0];
+  const errors = parseEslintReport(
+    report([
+      result(path, {
+        warningCount: 1,
+        messages: [
+          {
+            ruleId: null,
+            severity: 1,
+            message: 'File ignored because outside of base path.',
+          },
+        ],
+      }),
+    ]),
+    [path],
+    ROOT,
+  );
+  assert.ok(errors.includes(`ESLINT_IGNORED: ${path}`), JSON.stringify(errors));
+});
+
 void test('fatal and parser errors are errors of coverage, even when the path is present', () => {
   const cases = [
     { fatalErrorCount: 1 },
