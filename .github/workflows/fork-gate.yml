@@ -352,7 +352,11 @@ jobs:
           grep -q "versionName='${TAG#v}'" badging.txt
           "$aapt2" dump xmltree --file AndroidManifest.xml "$apk" > manifest.txt
           grep -q 'android.app.shortcuts' manifest.txt
-          "$aapt2" dump xmltree --file res/xml/shortcuts.xml "$apk" > shortcuts.txt
+          # Release builds shorten resource paths (R8), so the file is found through the resource table.
+          "$aapt2" dump resources "$apk" > resources.txt
+          sfile="$(grep -A1 -E 'resource 0x[0-9a-f]+ xml/shortcuts$' resources.txt | sed -n 's/.*(file) \([^ ]*\) .*/\1/p' | head -1)"
+          [ -n "$sfile" ] || { echo "::error::no file for xml/shortcuts in the APK"; exit 1; }
+          "$aapt2" dump xmltree --file "$sfile" "$apk" > shortcuts.txt
           grep 'targetPackage' shortcuts.txt
           [ "$(grep -c 'targetPackage.*"io.github.daniilmann.sptelos"' shortcuts.txt)" -eq 3 ]
           if grep 'targetPackage' shortcuts.txt | grep -q '"com.superproductivity.superproductivity"'; then
