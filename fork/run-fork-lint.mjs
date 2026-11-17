@@ -43,11 +43,7 @@ const findings = (path, row) => {
   /** @type {string[]} */
   const errors = [];
   const ignored = row.messages.some(
-    ({ ruleId, message }) =>
-      ruleId === null &&
-      /^(?:File ignored because of a matching ignore pattern|File ignored because no matching configuration was supplied\.|File ignored by default)/.test(
-        message,
-      ),
+    ({ ruleId, message }) => ruleId === null && message.startsWith('File ignored'),
   );
   const fatal =
     row.fatalErrorCount > 0 ||

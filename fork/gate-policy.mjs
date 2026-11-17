@@ -146,6 +146,7 @@ export const parseForkPolicy = (markdown) => {
   const registry = sectionJson(markdown, 'Reworked upstream files');
   if (
     !isRecord(budget) ||
+    Object.keys(budget).length !== 1 ||
     typeof budget.maxAddedLinesPerFile !== 'number' ||
     !Number.isSafeInteger(budget.maxAddedLinesPerFile) ||
     budget.maxAddedLinesPerFile < 0

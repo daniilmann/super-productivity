@@ -98,8 +98,8 @@ jobs:
       - name: Warn about fork policy changes
         run: |
           set -euo pipefail
-          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-          node fork/gate-policy.mjs --check-policy-changes origin/main
+          git fetch --no-tags origin "+refs/heads/${MAIN_BRANCH}:refs/remotes/origin/${MAIN_BRANCH}"
+          node fork/gate-policy.mjs --check-policy-changes "origin/${MAIN_BRANCH}"
       - name: Check upstream added-line budget
         run: node fork/check-upstream-budget.mjs
       - name: Check protected packages match the pinned upstream base
