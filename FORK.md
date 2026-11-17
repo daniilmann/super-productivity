@@ -50,6 +50,9 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 - `fork-gate.yml` — fast gate on every push; DMG, APK, Plugin API types package and web build on release tags
   and on manual runs; on a release tag only, the Release is created as a draft, its assets are compared with the
   built set, and it is published. An existing Release for the tag fails the run; nothing is overwritten.
+- `LICENSE` ships in every artifact without changing upstream files: in the DMG app as
+  `Contents/Resources/LICENSE` (`extraResources` in the overlay), in the APK as `assets/public/LICENSE`
+  (copied into the web build before Capacitor sync), and in the web build zip. The build checks each copy.
 - Release assets: `superProductivityTelos-arm64.dmg`, `superProductivityTelos-fdroid.apk`,
   `super-productivity-plugin-api-<version>.tgz`, `superProductivityTelos-web.zip`. Release notes are empty.
 

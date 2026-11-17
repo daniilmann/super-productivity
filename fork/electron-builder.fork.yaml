@@ -8,6 +8,10 @@ appId: io.github.daniilmann.sptelos
 productName: SP Telos
 extraMetadata:
   name: superProductivityTelos
+# The fork LICENSE ships next to the app (Contents/Resources/LICENSE).
+extraResources:
+  - from: LICENSE
+    to: LICENSE
 
 mac:
   appId: io.github.daniilmann.sptelos
