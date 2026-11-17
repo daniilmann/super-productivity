@@ -7,7 +7,7 @@ import { parseEslintReport, runForkLint } from './run-fork-lint.mjs';
 /**
  * @typedef {{ruleId: string|null, severity: number, message: string, fatal?: boolean}} Message
  * @typedef {{filePath: string, messages: Message[], errorCount: number,
- * warningCount: number, fatalErrorCount: number}} Result
+ * warningCount: number, fatalErrorCount: number, suppressedMessages?: Message[]}} Result
  * @typedef {{status: number|null, stdout: string, stderr: string}} ProcessResult
  * @typedef {(command: string, args: string[], options: {cwd: string, shell: false}) => ProcessResult} RunProcess
  */
@@ -70,26 +70,6 @@ void test('the same basename in another directory does not count as coverage', (
   );
 });
 
-for (const message of [
-  'File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings.',
-  'File ignored because no matching configuration was supplied.',
-]) {
-  void test(`a present result with an ignored/no-configuration warning fails: ${message}`, () => {
-    const rows = [
-      result(FILES[0], {
-        warningCount: 1,
-        messages: [{ ruleId: null, severity: 1, message }],
-      }),
-      result(FILES[1]),
-    ];
-    assert.ok(
-      parseEslintReport(report(rows), FILES, ROOT).includes(
-        `ESLINT_IGNORED: ${FILES[0]}`,
-      ),
-    );
-  });
-}
-
 void test('a rule error mentioning ignored is a lint error, not an ignored file', () => {
   const message =
     'Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.';
@@ -112,6 +92,7 @@ void test('a rule error mentioning ignored is a lint error, not an ignored file'
 for (const message of [
   'File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings or use "--no-warn-ignored" to suppress this warning.',
   'File ignored because no matching configuration was supplied.',
+  'File ignored by default. Use a negated ignore pattern (like "--ignore-pattern \'!node_modules/*\'") to override.',
 ]) {
   void test(`an ESLint configuration warning reports an ignored file: ${message}`, () => {
     const errors = parseEslintReport(
@@ -291,4 +272,33 @@ void test('exit zero cannot hide damaged JSON, a missing result, or lint finding
     assert.equal(outcome.skipped, false);
     assert.notDeepEqual(outcome.errors, []);
   }
+});
+
+for (const severity of [0, 1, 2]) {
+  void test(`suppressed ESLint messages fail even with zero counts: severity ${String(severity)}`, () => {
+    const path = FILES[0];
+    const errors = parseEslintReport(
+      report([
+        result(path, {
+          suppressedMessages: [
+            { ruleId: 'no-console', severity, message: 'Unexpected console statement.' },
+          ],
+        }),
+      ]),
+      [path],
+      ROOT,
+    );
+    assert.ok(errors.includes(`ESLINT_SUPPRESSED: ${path}`), JSON.stringify(errors));
+  });
+}
+
+void test('an explicitly empty suppressedMessages list is clean', () => {
+  assert.deepEqual(
+    parseEslintReport(
+      report([result(FILES[0], { suppressedMessages: [] })]),
+      [FILES[0]],
+      ROOT,
+    ),
+    [],
+  );
 });

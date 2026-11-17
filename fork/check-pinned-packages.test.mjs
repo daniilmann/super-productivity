@@ -21,6 +21,18 @@ const PACKAGES = [
 const FILE = 'nested/source file.txt';
 const OUTSIDE = 'docs/outside file.txt';
 
+// Test workers must not inherit the enclosing worktree's Git routing or config.
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith('GIT_')) Reflect.deleteProperty(process.env, name);
+}
+
+/** @returns {NodeJS.ProcessEnv} */
+function gitEnvironment() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')),
+  );
+}
+
 /** @param {string} root @param {...string} args */
 function git(root, ...args) {
   return execFileSync(
@@ -34,7 +46,12 @@ function git(root, ...args) {
       'commit.gpgsign=false',
       ...args,
     ],
-    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      cwd: root,
+      env: gitEnvironment(),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   ).trim();
 }
 
@@ -71,10 +88,16 @@ function repository(t) {
     'FORK.md',
     [
       '## Upstream change budget',
+      '',
+      'Each upstream file has the following added-line budget.',
+      '',
       '```json',
       '{"maxAddedLinesPerFile":0}',
       '```',
       '## Reworked upstream files',
+      '',
+      'These upstream files are linted as a whole.',
+      '',
       '```json',
       '[]',
       '```',
@@ -101,6 +124,7 @@ function expectChanges(root, paths) {
 function cli(root) {
   const result = spawnSync(process.execPath, [CLI], {
     cwd: root,
+    env: gitEnvironment(),
     encoding: 'utf8',
     timeout: 30_000,
   });
@@ -289,3 +313,33 @@ void test('CLI exits nonzero and diagnoses an unavailable base', (t) => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /ERR_UPSTREAM_BASE/);
 });
+
+for (const directory of PACKAGES) {
+  for (const state of ['absent', 'empty directory', 'present only in HEAD']) {
+    void test(`protected package must exist in the base and HEAD: ${directory}, ${state}`, (t) => {
+      const { root } = repository(t);
+      git(root, 'rm', '-r', directory);
+      commitAll(root);
+      const base = git(root, 'rev-parse', 'HEAD');
+      pin(root, base);
+      if (state === 'empty directory')
+        mkdirSync(join(root, directory), { recursive: true });
+      if (state === 'present only in HEAD')
+        put(root, `${directory}/${FILE}`, 'HEAD only\n');
+      commitAll(root);
+      assert.equal(git(root, 'ls-tree', '-r', base, '--', directory), '');
+      const errors = checkPinnedPackages(root);
+      assert.ok(
+        errors.length > 0,
+        'A missing package tree is not an unchanged protected package',
+      );
+      assert.ok(
+        errors.some((error) => error.includes(directory)),
+        JSON.stringify(errors),
+      );
+      const result = cli(root);
+      assert.notEqual(result.status, 0);
+      assert.ok(result.stderr.includes(directory), result.stderr);
+    });
+  }
+}

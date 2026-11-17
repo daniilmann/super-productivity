@@ -198,6 +198,18 @@ void test('missing numstat for an upstream change fails closed', () => {
   ]);
 });
 
+// Test workers must not inherit the enclosing worktree's Git routing or config.
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith('GIT_')) Reflect.deleteProperty(process.env, name);
+}
+
+/** @returns {NodeJS.ProcessEnv} */
+function gitEnvironment() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')),
+  );
+}
+
 /** @param {string} root @param {...string} args */
 function git(root, ...args) {
   return execFileSync(
@@ -211,7 +223,12 @@ function git(root, ...args) {
       'commit.gpgsign=false',
       ...args,
     ],
-    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      cwd: root,
+      env: gitEnvironment(),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   ).trim();
 }
 
@@ -235,10 +252,16 @@ function writePolicy(root, reworkedFiles = []) {
     'FORK.md',
     [
       '## Upstream change budget',
+      '',
+      'Each upstream file has the following added-line budget.',
+      '',
       '```json',
       '{"maxAddedLinesPerFile":10}',
       '```',
       '## Reworked upstream files',
+      '',
+      'These upstream files are linted as a whole.',
+      '',
       '```json',
       JSON.stringify(reworkedFiles),
       '```',

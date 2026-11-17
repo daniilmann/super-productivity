@@ -19,10 +19,16 @@ function policyText(budget = '{"maxAddedLinesPerFile":10}', registry = '[]') {
     '# Fork notes',
     'Unrelated prose mentions `not-a-registry.ts`.',
     '## Upstream change budget',
+    '',
+    'Each upstream file has the following added-line budget.',
+    '',
     '```json',
     budget,
     '```',
     '## Reworked upstream files',
+    '',
+    'These upstream files are linted as a whole.',
+    '',
     '```json',
     registry,
     '```',
@@ -176,7 +182,7 @@ void test('truncated Git name-status output fails instead of dropping a record',
 
 void test('lint list is the sorted unique union of supported A/R targets and the whole registry', () => {
   const changes = parseNameStatus(
-    'A\0z.ts\0A\0a.tsx\0A\0tool.js\0R100\0old.js\0b.mjs\0A\0legacy.cjs\0R100\0old.cjs\0renamed.cjs\0C100\0source.ts\0copy.ts\0M\0minimal.ts\0D\0gone.ts\0A\0z.ts\0',
+    'A\0z.ts\0A\0a.tsx\0A\0tool.js\0R100\0old.js\0b.mjs\0A\0legacy.cjs\0R100\0old.cjs\0renamed.cjs\0M\0minimal.ts\0D\0gone.ts\0A\0z.ts\0',
   );
   const reworked = ['unchanged.ts', 'z.ts'];
   assert.deepEqual(buildLintFiles(changes, reworked, new Set(reworked)), [
@@ -196,6 +202,18 @@ void test('missing registry files fail even with no A/R files', () => {
   });
 });
 
+// Test workers must not inherit the enclosing worktree's Git routing or config.
+for (const name of Object.keys(process.env)) {
+  if (name.startsWith('GIT_')) Reflect.deleteProperty(process.env, name);
+}
+
+/** @returns {NodeJS.ProcessEnv} */
+function gitEnvironment() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')),
+  );
+}
+
 /** @param {string} root @param {...string} args */
 function git(root, ...args) {
   return execFileSync(
@@ -209,7 +227,12 @@ function git(root, ...args) {
       'commit.gpgsign=false',
       ...args,
     ],
-    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      cwd: root,
+      env: gitEnvironment(),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   ).trim();
 }
 
