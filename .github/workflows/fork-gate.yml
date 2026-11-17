@@ -83,6 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
@@ -94,6 +95,8 @@ jobs:
           set -euo pipefail
           extra="$(ls .github/workflows | grep -vxF fork-gate.yml || true)"
           [ -z "$extra" ] || { echo "::error::workflows not listed in FORK.md: $extra"; exit 1; }
+      - name: Check upstream added-line budget
+        run: node fork/check-upstream-budget.mjs
 
   lint:
     name: Lint (upstream)
@@ -102,8 +105,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/setup-deps
+      - name: Probe fork lint rules and coverage
+        run: node fork/probe-fork-lint.mjs
+      - name: Lint new and reworked fork files
+        run: node fork/run-fork-lint.mjs
       - name: Upstream lint chain (skips tool tests that read removed upstream workflows)
         run: node fork/run-upstream-lint.mjs
 
