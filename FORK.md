@@ -43,10 +43,15 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 | 3 | `version` | `package.json`, `packages/plugin-api/package.json` | build-time substitution | `fork/apply-identity.mjs`; release artifacts |
 | 4 | `applicationId`, `versionCode`, `versionName`; `targetPackage` of the three shortcuts | `android/app/build.gradle`; `android/app/src/main/res/xml/shortcuts.xml` | build-time substitution | `fork/apply-identity.mjs --check` in the gate; APK manifest check |
 | 5 | `appId`, `mac.appId`, `productName`, `extraMetadata.name`, ad-hoc signature | none (overlay `fork/electron-builder.fork.yaml`) | build-time substitution | DMG artifact check |
+| 6 | No app data in Google cloud backup: every storage domain excluded as a whole | `android/app/src/main/res/xml/backup_rules.xml` (Android 7–11), `android/app/src/main/res/xml/data_extraction_rules.xml` (`cloud-backup`, Android 12+) | permanent | `fork/android-files.test.mjs`; APK check `fork/check-apk-backup.mjs` |
 
 ## Workflows kept in `.github/workflows/`
 
-- `fork-gate.yml` — fast gate on every push; DMG and APK builds on release tags and on manual runs.
+- `fork-gate.yml` — fast gate on every push; DMG, APK, Plugin API types package and web build on release tags
+  and on manual runs; on a release tag only, the Release is created as a draft, its assets are compared with the
+  built set, and it is published. An existing Release for the tag fails the run; nothing is overwritten.
+- Release assets: `superProductivityTelos-arm64.dmg`, `superProductivityTelos-fdroid.apk`,
+  `super-productivity-plugin-api-<version>.tgz`, `superProductivityTelos-web.zip`. Release notes are empty.
 
 ## Fork-only files
 

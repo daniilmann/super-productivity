@@ -21,6 +21,16 @@
     <exclude
       domain="sharedpref"
       path="SuperProductivityLaunchUrl.xml" />
+    <!-- Fork: no app data goes to Google cloud backup (see FORK.md). -->
+    <exclude domain="root" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="external" path="." />
+    <exclude domain="device_root" path="." />
+    <exclude domain="device_file" path="." />
+    <exclude domain="device_database" path="." />
+    <exclude domain="device_sharedpref" path="." />
   </cloud-backup>
   <device-transfer>
     <!-- A transferred fresh install should select launch mode from current state. -->
