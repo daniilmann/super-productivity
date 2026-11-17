@@ -185,8 +185,8 @@ const isFile = (path) => {
   }
 };
 
-/** @param {string} repoRoot @returns {{base: Base, policy: Policy}} */
-export const readGateInputs = (repoRoot) => {
+/** @param {string} repoRoot @returns {Base} */
+export const readUpstreamBase = (repoRoot) => {
   git(repoRoot, ['rev-parse', '--git-dir'], 'ERR_GIT');
   const base = parseUpstreamBase(
     read(join(repoRoot, 'fork/upstream-base'), 'ERR_UPSTREAM_BASE'),
@@ -202,6 +202,12 @@ export const readGateInputs = (repoRoot) => {
     ['merge-base', '--is-ancestor', base.commit, 'HEAD'],
     'ERR_UPSTREAM_BASE',
   );
+  return base;
+};
+
+/** @param {string} repoRoot @returns {{base: Base, policy: Policy}} */
+export const readGateInputs = (repoRoot) => {
+  const base = readUpstreamBase(repoRoot);
   const policy = parseForkPolicy(read(join(repoRoot, 'FORK.md'), 'ERR_FORK_POLICY'));
   const existing = new Set(
     policy.reworkedFiles.filter((path) => isFile(join(repoRoot, path))),
