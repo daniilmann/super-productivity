@@ -97,6 +97,8 @@ jobs:
           [ -z "$extra" ] || { echo "::error::workflows not listed in FORK.md: $extra"; exit 1; }
       - name: Check upstream added-line budget
         run: node fork/check-upstream-budget.mjs
+      - name: Check protected packages match the pinned upstream base
+        run: node fork/check-pinned-packages.mjs
 
   lint:
     name: Lint (upstream)
