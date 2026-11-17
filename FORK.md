@@ -50,9 +50,9 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 
 ## Upstream change budget
 
-In the fast gate, each changed upstream file may add at most this many lines against the pinned upstream base; deleted lines do not count, and new fork files are not counted. Binary changes to upstream files and replacements with symbolic links cannot be measured by this budget and fail the gate. Edit the number below to change the budget; the gate reads it from here.
+In the fast gate, each changed upstream file may add at most this many lines against the pinned upstream base; deleted lines do not count, and new fork files are not counted. Binary changes to upstream files and replacements with symbolic links cannot be measured by this budget and fail the gate. Edit the number below to change the budget; the gate reads it from here. Raising the budget requires the repository owner's approval.
 
-The heading must start at the beginning of a line, followed by a paragraph and exactly one fenced `json` block. The block must contain an object with the sole key `maxAddedLinesPerFile`, whose value is an integer ≥ 0. HTML comments in this policy section or a repeated key fail the gate. A change to the number in a branch produces a gate warning.
+The heading must start at the beginning of a line, followed by a paragraph and exactly one fenced `json` block. Only ordinary text paragraphs may follow the block. The block must contain an object with the sole key `maxAddedLinesPerFile`, whose value is an integer ≥ 0. HTML comments in this policy section or a repeated key fail the gate. A change to the number in a branch produces a gate warning.
 
 ```json
 {"maxAddedLinesPerFile": 20}
@@ -60,9 +60,9 @@ The heading must start at the beginning of a line, followed by a paragraph and e
 
 ## Reworked upstream files
 
-These upstream files are reworked under the fork's design rules; each listed file is exempt from the line budget and is linted as a whole by the fork lint (`eslint.fork.config.js`) from then on. The task that reworks a file adds its entry. An entry is removed only with the repository owner’s confirmation or when the file is removed from upstream during a move to a new upstream tag.
+These upstream files are reworked under the fork's design rules; each listed file is exempt from the line budget and is linted as a whole by the fork lint (`eslint.fork.config.js`) from then on. The task that reworks a file adds its entry. When a listed file is renamed upstream during a move to a new upstream tag, its path is updated in the same task. An entry is removed only with the repository owner’s confirmation or when the file is removed from upstream during a move to a new upstream tag.
 
-The heading must start at the beginning of a line, followed by a paragraph and exactly one fenced `json` block. The block must contain an array of unique paths to existing `*.ts`, `*.tsx`, `*.js`, or `*.mjs` files. HTML comments in this policy section, duplicate paths, other file types, and missing files fail the gate. A change to the list in a branch produces a gate warning.
+The heading must start at the beginning of a line, followed by a paragraph and exactly one fenced `json` block. Only ordinary text paragraphs may follow the block. The block must contain an array of unique paths to existing `*.ts`, `*.tsx`, `*.js`, or `*.mjs` files. HTML comments in this policy section, duplicate paths, other file types, and missing files fail the gate. A change to the list in a branch produces a gate warning.
 
 ```json
 []
