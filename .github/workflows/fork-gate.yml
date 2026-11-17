@@ -428,9 +428,9 @@ jobs:
         run: |
           set -euo pipefail
           npm run buildFrontend:prodWeb
-          dir="$(dirname "$(find .tmp/angular-dist -maxdepth 2 -name index.html | head -1)")"
-          [ -n "$dir" ] && [ "$dir" != . ] || { echo "::error::no web build index.html"; exit 1; }
-          echo "web build: $dir"
+          # productionWeb writes to dist/browser (angular.json).
+          dir=dist/browser
+          [ -f "$dir/index.html" ] || { echo "::error::no $dir/index.html"; exit 1; }
           (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/release-assets/superProductivityTelos-web.zip" .)
           ls -la release-assets
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
