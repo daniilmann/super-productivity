@@ -18,6 +18,7 @@ import { LS } from '../persistence/storage-keys.const';
 import { SnackService } from '../snack/snack.service';
 import { isUpdateCheckPossible } from './is-update-check-possible.util';
 import { UpdateCheckService } from './update-check.service';
+import { isUpstreamUpdateCheckEnabled } from './upstream-update-check-policy';
 
 describe('Fork upstream update policy', () => {
   let service: UpdateCheckService;
@@ -81,10 +82,14 @@ describe('Fork upstream update policy', () => {
     expect(localStorage.getItem(LS.UPDATE_CHECK_DISMISSED_VERSION)).toBeNull();
   };
 
+  it('disables upstream update checks directly through the fork policy', () => {
+    expect(isUpstreamUpdateCheckEnabled()).toBe(false);
+  });
+
   [true, false, undefined].forEach((setting) => {
     const settings = setting === undefined ? {} : { isCheckForUpdates: setting };
 
-    it(`reports update checks unavailable with setting ${setting}`, () => {
+    it(`control: reports update checks unavailable with setting ${setting}, holds in the browser test runner without the fork change`, () => {
       misc$.next(settings);
       expect(isUpdateCheckPossible()).toBe(false);
     });
@@ -106,7 +111,7 @@ describe('Fork upstream update policy', () => {
     expectNoRequestOrFeedback();
   }));
 
-  it('does not start checks on init, setting changes or later timer intervals', fakeAsync(() => {
+  it('control: does not start checks on init, setting changes or later timer intervals, holds in the browser test runner without the fork change', fakeAsync(() => {
     service.init();
     tick(30_001);
     expectNoRequestOrFeedback();

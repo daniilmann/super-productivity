@@ -57,6 +57,7 @@ export class AppUriTaskActionsService implements OnDestroy {
   private _subs = new Subscription();
 
   constructor() {
+    // Task-mutating URL actions are removed in this fork; the consumer does not subscribe.
     if (TASK_ACTION_HOSTS.length === 0) {
       return;
     }

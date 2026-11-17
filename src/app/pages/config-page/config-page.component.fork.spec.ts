@@ -85,7 +85,7 @@ describe('Fork upstream update policy: settings page', () => {
     misc$.complete();
   });
 
-  it('renders the actual footer without a check-for-updates control', () => {
+  it('control: renders the actual footer without a check-for-updates control, holds in the browser test runner without the fork change', () => {
     const root: HTMLElement = fixture.nativeElement;
     const footer = root.querySelector('footer');
     expect(footer).not.toBeNull();

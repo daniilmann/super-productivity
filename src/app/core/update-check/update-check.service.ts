@@ -13,6 +13,7 @@ import { SnackService } from '../snack/snack.service';
 import { LS } from '../persistence/storage-keys.const';
 import { Log } from '../log';
 import { isUpdateCheckPossible } from './is-update-check-possible.util';
+import { isUpstreamUpdateCheckEnabled } from './upstream-update-check-policy';
 
 const RELEASES_API_URL =
   'https://api.github.com/repos/super-productivity/super-productivity/releases/latest';
@@ -68,7 +69,7 @@ export class UpdateCheckService {
   }
 
   async checkForUpdate({ isUserTriggered = false } = {}): Promise<void> {
-    if (!isUpdateCheckPossible() || this._isCheckInFlight) {
+    if (!isUpstreamUpdateCheckEnabled() || this._isCheckInFlight) {
       return;
     }
     this._isCheckInFlight = true;
