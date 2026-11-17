@@ -48,6 +48,24 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 | 8 | Hide Remove for the protected product plugin ID | `src/app/plugins/ui/plugin-management/plugin-management.component.ts`; `src/app/plugins/ui/plugin-management/plugin-management.component.html` | permanent | `src/app/plugins/ui/plugin-management/plugin-management.component.fork.spec.ts` |
 | 9 | Remove task-writing URL actions (`create-task`, `complete-task`, `task-toggle-start`); preserve UI actions and OAuth | `src/app/features/tasks/util/parse-app-uri-task-action.ts`; `src/app/features/tasks/app-uri-actions/app-uri-task-actions.service.ts`; `src/app/core/app-url-open-router.ts`; `electron/protocol-handler.ts`; `android/app/src/main/AndroidManifest.xml`; `src/app/features/tasks/util/parse-app-uri-task-action.spec.ts` and `src/app/features/tasks/app-uri-actions/app-uri-task-actions.service.spec.ts` (removed superseded tests); `src/app/core/app-url-open-router.spec.ts` and `electron/protocol-handler.test.cjs` (superseded test blocks removed); `tools/verify-android-url-hosts.test.js` (superseded test block replaced) | permanent; removal | `src/app/features/tasks/util/parse-app-uri-task-action.fork.spec.ts`; `src/app/features/tasks/app-uri-actions/app-uri-task-actions.service.fork.spec.ts`; `src/app/core/app-url-open-router.fork.spec.ts`; `electron/protocol-handler.fork.test.cjs`; `tools/verify-android-url-hosts.test.js`; packaged app checks |
 
+## Upstream change budget
+
+In the fast gate, each changed upstream file may add at most this many lines against the pinned upstream base; deleted lines do not count, and new fork files are not counted. Edit the number below to change the budget; the gate reads it from here.
+
+```json
+{"maxAddedLinesPerFile": 20}
+```
+
+## Reworked upstream files
+
+These upstream files are reworked under the fork's design rules; each listed file is exempt from the line budget and is linted as a whole by the fork lint (`eslint.fork.config.js`) from then on. The task that reworks a file adds its entry, which is never removed silently.
+
+```json
+[]
+```
+
+The fast gate lints new and renamed `*.ts`, `*.tsx`, `*.js`, and `*.mjs` files since the pinned base, together with the reworked list, using `eslint.fork.config.js` (typed rules, complexity 30, 400 code lines per file, inline disables ignored). Every listed file must appear in the ESLint report; a file hidden by upstream ignores fails the gate.
+
 ## Workflows kept in `.github/workflows/`
 
 - `fork-gate.yml` — fast gate on every push; DMG, APK, Plugin API types package and web build on release tags
@@ -62,7 +80,8 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 ## Fork-only files
 
 - `FORK.md`
-- `fork/*`
+- `fork/*` — gate policy, fork lint, upstream budget, and lint probe scripts and their tests
+- `eslint.fork.config.js`
 - `.github/workflows/fork-gate.yml`
 - `src/app/core/app-uri-actions/is-blocked-task-app-uri.ts`
 - `src/app/core/update-check/upstream-update-check-policy.ts`
