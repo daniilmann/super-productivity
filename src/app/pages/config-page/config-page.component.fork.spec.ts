@@ -11,7 +11,6 @@ import {
   TestBed,
 } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BehaviorSubject, EMPTY, of } from 'rxjs';
@@ -36,17 +35,22 @@ describe('Fork upstream update policy: settings page', () => {
   let fixture: ComponentFixture<ConfigPageComponent>;
   let http: HttpTestingController;
   let misc$: BehaviorSubject<Partial<MiscConfig>>;
-  let banner: jasmine.SpyObj<BannerService>;
-  let snack: jasmine.SpyObj<SnackService>;
-  let copy: jasmine.Spy;
+  let banner: jasmine.SpyObj<{
+    open: BannerService['open'];
+    dismiss: BannerService['dismiss'];
+  }>;
+  let snack: jasmine.SpyObj<{ open: SnackService['open'] }>;
+  let copy: jasmine.Spy<ShareService['copyToClipboard']>;
 
   beforeEach(() => {
     misc$ = new BehaviorSubject<Partial<MiscConfig>>({ isCheckForUpdates: true });
-    banner = jasmine.createSpyObj('BannerService', ['open', 'dismiss']);
-    snack = jasmine.createSpyObj('SnackService', ['open']);
-    copy = jasmine.createSpy('copyToClipboard').and.resolveTo({ success: true });
+    banner = jasmine.createSpyObj<BannerService>('BannerService', ['open', 'dismiss']);
+    snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
+    copy = jasmine
+      .createSpy<ShareService['copyToClipboard']>('copyToClipboard')
+      .and.resolveTo({ success: true });
     TestBed.configureTestingModule({
-      imports: [ConfigPageComponent, TranslateModule.forRoot(), NoopAnimationsModule],
+      imports: [ConfigPageComponent, TranslateModule.forRoot()],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -86,24 +90,26 @@ describe('Fork upstream update policy: settings page', () => {
   });
 
   it('control: renders the actual footer without a check-for-updates control, holds in the browser test runner without the fork change', () => {
-    const root: HTMLElement = fixture.nativeElement;
+    const root = fixture.nativeElement as HTMLElement;
     const footer = root.querySelector('footer');
     expect(footer).not.toBeNull();
     const updateControls = Array.from(root.querySelectorAll('a, button')).filter(
-      (element) => element.textContent?.trim() === T.PS.CHECK_FOR_UPDATES,
+      (element) => element.textContent.trim() === T.PS.CHECK_FOR_UPDATES,
     );
     expect(updateControls).toEqual([]);
   });
 
   [true, false, undefined].forEach((setting) => {
-    it(`cannot start HTTP through the real page method with setting ${setting}`, fakeAsync(() => {
+    it(`cannot start HTTP through the real page method with setting ${String(setting)}`, fakeAsync(() => {
       misc$.next(setting === undefined ? {} : { isCheckForUpdates: setting });
       fixture.componentInstance.checkForUpdates();
       const requests = http.match(() => true);
       expect(requests.length)
         .withContext('page delegates to the real update service')
         .toBe(0);
-      requests.forEach((request) => request.flush({ tag_name: 'v999.0.0' }));
+      requests.forEach((request) => {
+        request.flush({ tag_name: 'v999.0.0' });
+      });
       flushMicrotasks();
       expect(banner.open).not.toHaveBeenCalled();
       expect(snack.open).not.toHaveBeenCalled();
@@ -111,20 +117,26 @@ describe('Fork upstream update policy: settings page', () => {
   });
 
   it('keeps version copy, changelog, logs, privacy and feedback controls', fakeAsync(() => {
-    const root: HTMLElement = fixture.nativeElement;
-    const footer = root.querySelector('footer')!;
+    const root = fixture.nativeElement as HTMLElement;
+    const footer = root.querySelector('footer');
+    if (!footer) {
+      throw new Error('the settings footer must render');
+    }
     const links = Array.from(footer.querySelectorAll('a'));
-    expect(links.some((link) => link.textContent?.trim() === 'Logs')).toBe(true);
-    expect(links.some((link) => link.textContent?.trim() === 'Changelog')).toBe(true);
-    expect(links.some((link) => link.textContent?.trim() === T.PS.PRIVACY_POLICY)).toBe(
+    expect(links.some((link) => link.textContent.trim() === 'Logs')).toBe(true);
+    expect(links.some((link) => link.textContent.trim() === 'Changelog')).toBe(true);
+    expect(links.some((link) => link.textContent.trim() === T.PS.PRIVACY_POLICY)).toBe(
       true,
     );
-    expect(links.some((link) => link.textContent?.trim() === T.PS.PROVIDE_FEEDBACK)).toBe(
+    expect(links.some((link) => link.textContent.trim() === T.PS.PROVIDE_FEEDBACK)).toBe(
       true,
     );
     const version = footer.querySelector<HTMLAnchorElement>('a.version');
     expect(version).not.toBeNull();
-    version!.click();
+    if (!version) {
+      throw new Error('the footer must contain the version link');
+    }
+    version.click();
     flushMicrotasks();
     expect(copy).toHaveBeenCalledOnceWith(
       fixture.componentInstance.appVersion,

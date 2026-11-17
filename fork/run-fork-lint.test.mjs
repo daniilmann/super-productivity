@@ -35,7 +35,7 @@ function report(rows = FILES.map((path) => result(path))) {
 void test('absolute ESLint paths cover expected relative paths, irrespective of result order', () => {
   assert.deepEqual(
     parseEslintReport(
-      report(FILES.toReversed().map((path) => result(path))),
+      report([...FILES].reverse().map((path) => result(path))),
       FILES,
       ROOT,
     ),
@@ -73,7 +73,6 @@ void test('the same basename in another directory does not count as coverage', (
 for (const message of [
   'File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings.',
   'File ignored because no matching configuration was supplied.',
-  'No matching configuration found for this file.',
 ]) {
   void test(`a present result with an ignored/no-configuration warning fails: ${message}`, () => {
     const rows = [

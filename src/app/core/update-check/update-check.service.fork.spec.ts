@@ -24,18 +24,21 @@ describe('Fork upstream update policy', () => {
   let service: UpdateCheckService;
   let http: HttpTestingController;
   let misc$: BehaviorSubject<Partial<MiscConfig> | undefined>;
-  let banner: jasmine.SpyObj<BannerService>;
-  let snack: jasmine.SpyObj<SnackService>;
-  let openExternal: jasmine.Spy;
-  let openWindow: jasmine.Spy;
+  let banner: jasmine.SpyObj<{
+    open: BannerService['open'];
+    dismiss: BannerService['dismiss'];
+  }>;
+  let snack: jasmine.SpyObj<{ open: SnackService['open'] }>;
+  let openExternal: jasmine.Spy<(url: string) => void>;
+  let openWindow: jasmine.Spy<typeof window.open>;
   let previousEa: unknown;
   let previousDismissedVersion: string | null;
 
   beforeEach(() => {
     misc$ = new BehaviorSubject<Partial<MiscConfig> | undefined>(undefined);
-    banner = jasmine.createSpyObj('BannerService', ['open', 'dismiss']);
-    snack = jasmine.createSpyObj('SnackService', ['open']);
-    openExternal = jasmine.createSpy('openExternalUrl');
+    banner = jasmine.createSpyObj<BannerService>('BannerService', ['open', 'dismiss']);
+    snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
+    openExternal = jasmine.createSpy<(url: string) => void>('openExternalUrl');
     openWindow = spyOn(window, 'open');
     previousEa = (window as unknown as { ea?: unknown }).ea;
     (window as unknown as { ea: unknown }).ea = { openExternalUrl: openExternal };
@@ -72,7 +75,9 @@ describe('Fork upstream update policy', () => {
   const expectNoRequestOrFeedback = (): void => {
     const requests = http.match(() => true);
     expect(requests.length).withContext('no upstream release request').toBe(0);
-    requests.forEach((request) => request.flush({ tag_name: 'v999.0.0' }));
+    requests.forEach((request) => {
+      request.flush({ tag_name: 'v999.0.0' });
+    });
     flushMicrotasks();
     expect(banner.open).not.toHaveBeenCalled();
     expect(banner.dismiss).not.toHaveBeenCalled();
@@ -89,13 +94,13 @@ describe('Fork upstream update policy', () => {
   [true, false, undefined].forEach((setting) => {
     const settings = setting === undefined ? {} : { isCheckForUpdates: setting };
 
-    it(`control: reports update checks unavailable with setting ${setting}, holds in the browser test runner without the fork change`, () => {
+    it(`control: reports update checks unavailable with setting ${String(setting)}, holds in the browser test runner without the fork change`, () => {
       misc$.next(settings);
       expect(isUpdateCheckPossible()).toBe(false);
     });
 
     [false, true].forEach((isUserTriggered) => {
-      it(`blocks repeated direct checks: setting=${setting}, user=${isUserTriggered}`, fakeAsync(() => {
+      it(`blocks repeated direct checks: setting=${String(setting)}, user=${String(isUserTriggered)}`, fakeAsync(() => {
         misc$.next(settings);
         void service.checkForUpdate({ isUserTriggered });
         void service.checkForUpdate({ isUserTriggered });

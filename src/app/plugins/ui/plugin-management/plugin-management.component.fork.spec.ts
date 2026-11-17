@@ -5,12 +5,11 @@ import {
   flushMicrotasks,
   TestBed,
 } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { TranslateModule } from '@ngx-translate/core';
-import { of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { LayoutService } from '../../../core-ui/layout/layout.service';
 import { SnackService } from '../../../core/snack/snack.service';
 import { GlobalConfigService } from '../../../features/config/global-config.service';
@@ -27,25 +26,35 @@ import { PluginManagementComponent } from './plugin-management.component';
 describe('Fork protected plugin removal UI', () => {
   let fixture: ComponentFixture<PluginManagementComponent>;
   let states: WritableSignal<Map<string, PluginState>>;
-  let remove: jasmine.Spy;
-  let clearMemory: jasmine.Spy;
-  let clearCache: jasmine.Spy;
-  let dialog: jasmine.Spy;
+  let remove: jasmine.Spy<PluginService['removeUploadedPlugin']>;
+  let clearMemory: jasmine.Spy<PluginService['clearUploadedPluginsFromMemory']>;
+  let clearCache: jasmine.Spy<PluginCacheService['clearCache']>;
+  type ConfirmDialogOpen = (
+    component: typeof DialogConfirmComponent,
+    config: MatDialogConfig<unknown>,
+  ) => { afterClosed: () => Observable<boolean | undefined> };
+  let dialog: jasmine.Spy<ConfirmDialogOpen>;
 
   beforeEach(() => {
     states = signal(new Map<string, PluginState>());
-    remove = jasmine.createSpy('removeUploadedPlugin').and.resolveTo();
-    clearMemory = jasmine.createSpy('clearUploadedPluginsFromMemory').and.resolveTo();
-    clearCache = jasmine.createSpy('clearCache').and.resolveTo();
-    dialog = jasmine.createSpy('open').and.returnValue({ afterClosed: () => of(true) });
+    remove = jasmine
+      .createSpy<PluginService['removeUploadedPlugin']>('removeUploadedPlugin')
+      .and.resolveTo();
+    clearMemory = jasmine
+      .createSpy<
+        PluginService['clearUploadedPluginsFromMemory']
+      >('clearUploadedPluginsFromMemory')
+      .and.resolveTo();
+    clearCache = jasmine
+      .createSpy<PluginCacheService['clearCache']>('clearCache')
+      .and.resolveTo();
+    dialog = jasmine
+      .createSpy<ConfirmDialogOpen>('open')
+      .and.returnValue({ afterClosed: () => of(true) });
     const icons = signal(new Map<string, string>());
 
     TestBed.configureTestingModule({
-      imports: [
-        PluginManagementComponent,
-        TranslateModule.forRoot(),
-        NoopAnimationsModule,
-      ],
+      imports: [PluginManagementComponent, TranslateModule.forRoot()],
       providers: [
         {
           provide: PluginService,
@@ -71,7 +80,7 @@ describe('Fork protected plugin removal UI', () => {
         { provide: PluginBridgeService, useValue: { hasConfigHandler: () => false } },
         {
           provide: SnackService,
-          useValue: jasmine.createSpyObj('SnackService', ['open']),
+          useValue: jasmine.createSpyObj<SnackService>('SnackService', ['open']),
         },
       ],
     });
@@ -105,29 +114,32 @@ describe('Fork protected plugin removal UI', () => {
       ]),
     );
     fixture.detectChanges();
-    const root: HTMLElement = fixture.nativeElement;
+    const root = fixture.nativeElement as HTMLElement;
     const card = Array.from(root.querySelectorAll<HTMLElement>('mat-card')).find(
       (candidate) =>
-        candidate.querySelector('mat-card-title')?.textContent?.trim() === name,
+        candidate.querySelector('mat-card-title')?.textContent.trim() === name,
     );
     expect(card).withContext('the loaded plugin card must actually render').toBeDefined();
-    expect(card?.querySelector('mat-slide-toggle')).not.toBeNull();
-    return card!;
+    if (!card) {
+      throw new Error('the loaded plugin card must actually render');
+    }
+    expect(card.querySelector('mat-slide-toggle')).not.toBeNull();
+    return card;
   };
 
   const removeButton = (card: HTMLElement): HTMLButtonElement | undefined =>
     Array.from(card.querySelectorAll<HTMLButtonElement>('mat-card-actions button')).find(
-      (button) => button.textContent?.includes(T.PLUGINS.REMOVE),
+      (button) => button.textContent.includes(T.PLUGINS.REMOVE),
     );
 
   [true, false].forEach((isEnabled) => {
-    it(`hides Remove for a loaded sp-telos with isEnabled=${isEnabled}`, () => {
+    it(`hides Remove for a loaded sp-telos with isEnabled=${String(isEnabled)}`, () => {
       const card = renderUploaded('sp-telos', 'Ordinary display name', isEnabled);
       expect(removeButton(card)).toBeUndefined();
       expect(remove).not.toHaveBeenCalled();
     });
 
-    it(`keeps Remove for another uploaded ID named sp-telos, enabled=${isEnabled}`, () => {
+    it(`keeps Remove for another uploaded ID named sp-telos, enabled=${String(isEnabled)}`, () => {
       const card = renderUploaded('another-plugin', 'sp-telos', isEnabled);
       const button = removeButton(card);
       expect(button).toBeDefined();
@@ -139,7 +151,10 @@ describe('Fork protected plugin removal UI', () => {
     const card = renderUploaded('another-plugin', 'Other Plugin', true);
     const button = removeButton(card);
     expect(button).toBeDefined();
-    button!.click();
+    if (!button) {
+      throw new Error('the expected plugin management button must render');
+    }
+    button.click();
     flushMicrotasks();
 
     expect(dialog).toHaveBeenCalledOnceWith(DialogConfirmComponent, {
@@ -154,12 +169,15 @@ describe('Fork protected plugin removal UI', () => {
   }));
 
   [false, undefined].forEach((result) => {
-    it(`keeps another uploaded plugin when confirmation returns ${result}`, fakeAsync(() => {
+    it(`keeps another uploaded plugin when confirmation returns ${String(result)}`, fakeAsync(() => {
       dialog.and.returnValue({ afterClosed: () => of(result) });
       const card = renderUploaded('another-plugin', 'Other Plugin', false);
       const button = removeButton(card);
       expect(button).toBeDefined();
-      button!.click();
+      if (!button) {
+        throw new Error('the expected plugin management button must render');
+      }
+      button.click();
       flushMicrotasks();
 
       expect(dialog).toHaveBeenCalledTimes(1);
@@ -169,14 +187,17 @@ describe('Fork protected plugin removal UI', () => {
 
   it('preserves Remove all uploaded plugins when only sp-telos is installed', fakeAsync(() => {
     renderUploaded('sp-telos', 'Product plugin', true);
-    const root: HTMLElement = fixture.nativeElement;
+    const root = fixture.nativeElement as HTMLElement;
     const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
       (candidate) =>
-        candidate.textContent?.includes(T.PLUGINS.REMOVE_ALL_UPLOADED_PLUGINS),
+        candidate.textContent.includes(T.PLUGINS.REMOVE_ALL_UPLOADED_PLUGINS),
     );
     expect(button).toBeDefined();
     expect(button?.disabled).toBe(false);
-    button!.click();
+    if (!button) {
+      throw new Error('the expected plugin management button must render');
+    }
+    button.click();
     flushMicrotasks();
 
     expect(dialog).toHaveBeenCalledOnceWith(DialogConfirmComponent, {

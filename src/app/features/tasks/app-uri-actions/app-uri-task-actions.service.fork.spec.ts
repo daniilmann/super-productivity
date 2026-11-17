@@ -15,13 +15,16 @@ describe('Fork task URI policy: common consumer', () => {
   let service: AppUriTaskActionsService | undefined;
   let pending$: ReplaySubject<AppUriTaskAction>;
   let loaded$: ReplaySubject<boolean>;
-  let taskService: jasmine.SpyObj<TaskService>;
-  let snack: jasmine.SpyObj<SnackService>;
+  let taskService: jasmine.SpyObj<{
+    add: TaskService['add'];
+    setDone: TaskService['setDone'];
+  }>;
+  let snack: jasmine.SpyObj<{ open: SnackService['open'] }>;
   let store: MockStore;
-  let dispatch: jasmine.Spy;
-  let select: jasmine.Spy;
-  let subscribePending: jasmine.Spy;
-  let subscribeHydration: jasmine.Spy;
+  let dispatch: jasmine.Spy<MockStore['dispatch']>;
+  let select: jasmine.Spy<MockStore['select']>;
+  let subscribePending: jasmine.Spy<() => void>;
+  let subscribeHydration: jasmine.Spy<() => void>;
 
   const markup = '<img src=https://example.com/pixel>&';
   const tasks: Task[] = [
@@ -45,11 +48,11 @@ describe('Fork task URI policy: common consumer', () => {
     service = undefined;
     pending$ = new ReplaySubject<AppUriTaskAction>(1);
     loaded$ = new ReplaySubject<boolean>(1);
-    taskService = jasmine.createSpyObj('TaskService', ['add', 'setDone']);
+    taskService = jasmine.createSpyObj<TaskService>('TaskService', ['add', 'setDone']);
     taskService.add.and.returnValue('created-task');
-    snack = jasmine.createSpyObj('SnackService', ['open']);
-    subscribePending = jasmine.createSpy('pending action subscription');
-    subscribeHydration = jasmine.createSpy('hydration subscription');
+    snack = jasmine.createSpyObj<SnackService>('SnackService', ['open']);
+    subscribePending = jasmine.createSpy<() => void>('pending action subscription');
+    subscribeHydration = jasmine.createSpy<() => void>('hydration subscription');
     // Match DataInitStateService's one-shot replay contract: late consumers
     // see the completed initial hydration, never repeated hydration events.
     const initiallyLoaded$ = loaded$.pipe(take(1), shareReplay(1));
@@ -81,7 +84,7 @@ describe('Fork task URI policy: common consumer', () => {
         },
       ],
     });
-    store = TestBed.inject(MockStore);
+    store = TestBed.inject<MockStore>(MockStore);
     dispatch = spyOn(store, 'dispatch');
     select = spyOn(store, 'select').and.callThrough();
   });
@@ -199,7 +202,9 @@ describe('Fork task URI policy: common consumer', () => {
 
   it('does not subscribe to either the pending stream or hydration', () => {
     createService();
-    validActions.forEach((action) => pending$.next(action));
+    validActions.forEach((action) => {
+      pending$.next(action);
+    });
     loaded$.next(true);
     expect(subscribePending).not.toHaveBeenCalled();
     expect(subscribeHydration).not.toHaveBeenCalled();
@@ -208,10 +213,17 @@ describe('Fork task URI policy: common consumer', () => {
 
   it('has no delayed write when destroyed before hydration', fakeAsync(() => {
     createService();
-    validActions.forEach((action) => pending$.next(action));
-    service!.ngOnDestroy();
+    validActions.forEach((action) => {
+      pending$.next(action);
+    });
+    if (!service) {
+      throw new Error('the service must exist before it can be destroyed');
+    }
+    service.ngOnDestroy();
     loaded$.next(true);
-    validActions.forEach((action) => pending$.next(action));
+    validActions.forEach((action) => {
+      pending$.next(action);
+    });
     tick(60_000);
     expectNoEffects();
   }));

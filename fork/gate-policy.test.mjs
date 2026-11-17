@@ -222,7 +222,9 @@ function put(root, path, text) {
 /** @param {import('node:test').TestContext} t */
 function repository(t) {
   const root = mkdtempSync(join(tmpdir(), 'fork-policy-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   git(root, 'init', '-b', 'fixture-main');
   for (const path of ['unchanged.ts', 'minimal.ts', 'old name.js'])
     put(root, path, `// ${path}\n`);

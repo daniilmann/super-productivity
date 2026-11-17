@@ -20,7 +20,7 @@ const PATH = 'src/edited file.ts';
 
 /** @param {string} path @param {number} added @param {number} [limit] */
 function exceeded(path, added, limit = 10) {
-  return `BUDGET_EXCEEDED: ${path}: added ${added} > limit ${limit}`;
+  return `BUDGET_EXCEEDED: ${path}: added ${String(added)} > limit ${String(limit)}`;
 }
 
 void test('numstat parses NUL records, rename pairs, whitespace, and binary sentinels', () => {
@@ -55,7 +55,7 @@ for (const output of [
 }
 
 for (const added of [0, 10, 11]) {
-  void test(`per-file added-line boundary: ${added}`, () => {
+  void test(`per-file added-line boundary: ${String(added)}`, () => {
     const errors = checkUpstreamBudget(
       [{ status: 'M', path: PATH }],
       [{ path: PATH, added, deleted: 0 }],
@@ -223,7 +223,9 @@ function put(root, path, text) {
 
 /** @param {string} label @param {number} count */
 function lines(label, count) {
-  return Array.from({ length: count }, (_, index) => `${label} ${index}\n`).join('');
+  return Array.from({ length: count }, (_, index) => `${label} ${String(index)}\n`).join(
+    '',
+  );
 }
 
 /** @param {string} root @param {string[]} [reworkedFiles] */
@@ -259,7 +261,9 @@ function commitAll(root) {
 /** @param {import('node:test').TestContext} t */
 function repository(t) {
   const root = mkdtempSync(join(tmpdir(), 'fork-budget-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   git(root, 'init', '-b', 'fixture-main');
   for (const path of [PATH, 'src/neighbor.ts', 'src/rename old.ts', 'src/deleted.ts']) {
     put(root, path, lines(path, 80));
