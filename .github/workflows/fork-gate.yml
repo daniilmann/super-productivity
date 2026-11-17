@@ -263,10 +263,12 @@ jobs:
       - name: LICENSE in the app
         run: |
           set -euo pipefail
-          for app in $(find .tmp/app-builds -maxdepth 2 -name '*.app' -type d); do
+          find .tmp/app-builds -maxdepth 2 -name '*.app' -type d > apps.txt
+          [ -s apps.txt ] || { echo "::error::no .app in the build"; exit 1; }
+          while IFS= read -r app; do
             cmp LICENSE "$app/Contents/Resources/LICENSE" || { echo "::error::LICENSE missing or different in $app"; exit 1; }
             echo "LICENSE ok: $app"
-          done
+          done < apps.txt
       - name: Upstream spec code is not in the build
         run: |
           set -euo pipefail
