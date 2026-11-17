@@ -69,6 +69,10 @@ const inspect = (files) => {
   const outcome = runForkLint(files, {
     repoRoot,
     runProcess: (command, args, options) => {
+      requireProbe(
+        args.at(-files.length - 1) === '--',
+        'Missing ESLint positional separator',
+      );
       // Capture the real process report while using the regular runner's coverage checks.
       const result = spawnLint(command, args, options);
       stdout = result.stdout;
@@ -76,7 +80,7 @@ const inspect = (files) => {
     },
   });
   console.log(`Probe files: ${JSON.stringify(files)}`);
-  if (outcome.errors.length > 0) console.log(outcome.errors.join('\n'));
+  if (outcome.errors.length > 0) console.log(JSON.stringify(outcome.errors, null, 2));
   requireProbe(
     !outcome.errors.includes('INVALID_ESLINT_JSON'),
     'ESLint did not produce valid JSON',
@@ -113,20 +117,37 @@ const checkConfiguration = async (eslint, files) => {
   for (const path of files) {
     const config = /** @type {unknown} */ (await eslint.calculateConfigForFile(path));
     if (!isRecord(config) || !isRecord(config.rules)) {
-      throw new Error(`No effective configuration: ${path}`);
+      throw new Error(`No effective configuration: ${JSON.stringify(path)}`);
     }
     for (const id of requiredRules) {
       const rule = config.rules[id];
       const severity = Array.isArray(rule) ? /** @type {unknown} */ (rule[0]) : rule;
       requireProbe(
         severity === 2 || severity === 'error',
-        `${id} is not an error for ${path}`,
+        `${id} is not an error for ${JSON.stringify(path)}`,
+      );
+    }
+    const limits = {
+      complexity: { max: 30, variant: 'classic' },
+      'max-lines': { max: 400, skipBlankLines: true, skipComments: true },
+    };
+    for (const [id, expected] of Object.entries(limits)) {
+      const rule = config.rules[id];
+      const actual = Array.isArray(rule) ? /** @type {unknown} */ (rule[1]) : undefined;
+      requireProbe(
+        Array.isArray(rule) &&
+          (rule[0] === 2 || rule[0] === 'error') &&
+          rule.length === 2 &&
+          isRecord(actual) &&
+          Object.keys(actual).length === Object.keys(expected).length &&
+          Object.entries(expected).every(([key, value]) => actual[key] === value),
+        `${id} options differ from ${JSON.stringify(expected)} for ${JSON.stringify(path)}`,
       );
     }
     const options = config.linterOptions;
     requireProbe(
       isRecord(options) && options.noInlineConfig === true,
-      `Inline config is enabled: ${path}`,
+      `Inline config is enabled: ${JSON.stringify(path)}`,
     );
   }
 };
@@ -142,17 +163,17 @@ const expectViolation = (result, path, rule) => {
   requireProbe(
     row?.messages.some((message) => message.ruleId === rule && message.severity === 2) ===
       true,
-    `Expected ${rule} in ${path}; report: ${JSON.stringify(result.report)}`,
+    `Expected ${rule} in ${JSON.stringify(path)}; report: ${JSON.stringify(result.report)}`,
   );
   requireProbe(
     result.outcome.errors.includes(`ESLINT_EXIT: 1`),
-    `ESLint did not reject ${path}`,
+    `ESLint did not reject ${JSON.stringify(path)}`,
   );
   requireProbe(
     !result.outcome.errors.some((error) =>
       /^(?:ESLINT_FATAL|MISSING_ESLINT_RESULT):/.test(error),
     ),
-    `Parsing or coverage failed: ${result.outcome.errors.join('\n')}`,
+    `Parsing or coverage failed: ${JSON.stringify(result.outcome.errors)}`,
   );
 };
 
@@ -185,6 +206,8 @@ const probe = async () => {
     const ignoredDirectory = mkdtempSync(join(repoRoot, '.tmp/fork-lint-probe-'));
     cleanup.push(ignoredDirectory);
     const ignored = relative(repoRoot, join(ignoredDirectory, 'ignored.ts'));
+    const dash = `--${basename(directory)}.ts`;
+    cleanup.push(join(repoRoot, dash));
     const floating = 'Promise.resolve(1);\n';
     writeFileSync(join(repoRoot, ts), floating);
     writeFileSync(join(repoRoot, spec), floating);
@@ -205,6 +228,7 @@ const probe = async () => {
       ).join(''),
     );
     writeFileSync(join(repoRoot, ignored), 'export const ignoredProbe = 1;\n');
+    writeFileSync(join(repoRoot, dash), 'export {};\n');
     await checkConfiguration(eslint, [ts, spec, mjs, 'eslint.fork.config.js']);
     const negatives = inspect([ts, spec, mjs, complexity, size, inline]);
     for (const path of [ts, spec, mjs, inline]) {
@@ -212,6 +236,11 @@ const probe = async () => {
     }
     expectViolation(negatives, complexity, 'complexity');
     expectViolation(negatives, size, 'max-lines');
+    const dashResult = inspect([dash]);
+    requireProbe(
+      dashResult.report.some((row) => relative(repoRoot, row.filePath) === dash),
+      'Leading-dash path was not treated as a file',
+    );
     const ignoredResult = inspect([ignored]);
     requireProbe(
       ignoredResult.outcome.errors.includes(`ESLINT_IGNORED: ${ignored}`),
@@ -223,7 +252,7 @@ const probe = async () => {
     const positive = inspect([ts, spec, mjs, 'eslint.fork.config.js']);
     requireProbe(
       positive.outcome.errors.length === 0,
-      `Positive controls failed: ${positive.outcome.errors.join('\n')}`,
+      `Positive controls failed: ${JSON.stringify(positive.outcome.errors)}`,
     );
     console.log(
       'Fork lint probe passed; the following regular lint step checks the current file list.',

@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseUpstreamBase } from './gate-policy.mjs';
 
 export const APP_ID = 'io.github.daniilmann.sptelos';
 export const UPSTREAM_APP_ID = 'com.superproductivity.superproductivity';
@@ -76,18 +77,11 @@ export function versionCode({ M, m, p, N }) {
  * @param {string} text
  */
 export function parseBase(text) {
-  const lines = text.split('\n').filter((l) => l !== '');
-  /** @type {Record<string, string|undefined>} */
-  const kv = {};
-  for (const line of lines) {
-    const m = /^(tag|commit)=(.+)$/.exec(line);
-    if (!m || m[1] in kv) fail(`${FILES.base}: unexpected line ${JSON.stringify(line)}`);
-    kv[m[1]] = m[2];
+  try {
+    return parseUpstreamBase(text);
+  } catch (error) {
+    fail(`${FILES.base}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (!/^v\d+\.\d+\.\d+$/.test(kv.tag ?? '')) fail(`${FILES.base}: bad or missing tag=`);
-  if (!/^[0-9a-f]{40}$/.test(kv.commit ?? ''))
-    fail(`${FILES.base}: bad or missing commit=`);
-  return kv;
 }
 
 /**
@@ -196,7 +190,7 @@ export function apply(root, tag, otherTags = gitTags(root)) {
   const code = versionCode(t);
   const base = parseBase(readFileSync(join(root, FILES.base), 'utf8'));
   if (t.upstreamTag !== base.tag)
-    fail(`tag ${tag} is for ${t.upstreamTag}, base is ${String(base.tag)}`);
+    fail(`tag ${tag} is for ${t.upstreamTag}, base is ${base.tag}`);
   checkMonotonic(tag, code, otherTags);
 
   const gradlePath = join(root, FILES.gradle);
@@ -226,7 +220,8 @@ function main(argv) {
     else if (a === '--root') args.root = argv[++i];
     else fail(`unknown argument ${a}`);
   }
-  if (args.check === Boolean(args.tag)) fail('use exactly one of --check or --tag');
+  if (Boolean(args.check) === Boolean(args.tag))
+    fail('use exactly one of --check or --tag');
   if (args.check) {
     checkTree(args.root);
     console.log('fork identity: tree literals ok');

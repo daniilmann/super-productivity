@@ -95,6 +95,11 @@ jobs:
           set -euo pipefail
           extra="$(ls .github/workflows | grep -vxF fork-gate.yml || true)"
           [ -z "$extra" ] || { echo "::error::workflows not listed in FORK.md: $extra"; exit 1; }
+      - name: Warn about fork policy changes
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          node fork/gate-policy.mjs --check-policy-changes origin/main
       - name: Check upstream added-line budget
         run: node fork/check-upstream-budget.mjs
       - name: Check protected packages match the pinned upstream base

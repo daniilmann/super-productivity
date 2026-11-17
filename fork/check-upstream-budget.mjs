@@ -65,13 +65,17 @@ export const checkUpstreamBudget = (changes, stats, policy) => {
   for (const change of changes) {
     if (
       !['M', 'R', 'T'].includes(change.status) ||
-      exempt.has(change.path) ||
+      (exempt.has(change.path) && change.status !== 'T') ||
       checked.has(change.path)
     )
       continue;
     checked.add(change.path);
     const stat = byPath.get(change.path);
-    if (!stat || stat.oldPath !== change.oldPath) {
+    if (change.status === 'T') {
+      errors.push(
+        `BUDGET_NOT_APPLICABLE: ${change.path}: бюджет строк неприменим (typechange)`,
+      );
+    } else if (!stat || stat.oldPath !== change.oldPath) {
       errors.push(`MISSING_NUMSTAT: ${change.path}`);
     } else if (stat.added === null || stat.deleted === null) {
       errors.push(`BUDGET_NOT_APPLICABLE: ${change.path}: бюджет строк неприменим`);
@@ -95,6 +99,7 @@ const diff = (repoRoot, commit, format) => {
         '--no-textconv',
         '--no-renames',
         '--find-renames',
+        '-l0',
         format,
         '-z',
         `${commit}...HEAD`,
@@ -114,11 +119,34 @@ const diff = (repoRoot, commit, format) => {
   }
 };
 
+/** @param {string} repoRoot @returns {Set<string>} */
+const symlinkPaths = (repoRoot) => {
+  const output = execFileSync('git', ['ls-tree', '-r', '-z', 'HEAD'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  return new Set(
+    output
+      .split('\0')
+      .filter((entry) => entry.startsWith('120000 '))
+      .map((entry) => entry.slice(entry.indexOf('\t') + 1)),
+  );
+};
+
 /** @param {string} repoRoot @returns {string[]} */
 export const checkRepositoryBudget = (repoRoot) => {
   const { base, policy } = readGateInputs(repoRoot);
+  const links = symlinkPaths(repoRoot);
+  const changes = parseNameStatus(diff(repoRoot, base.commit, '--name-status'));
+  // A symbolic link has no measurable text budget, including an existing renamed link.
   return checkUpstreamBudget(
-    parseNameStatus(diff(repoRoot, base.commit, '--name-status')),
+    changes.map((change) =>
+      links.has(change.path) && ['M', 'R'].includes(change.status)
+        ? { ...change, status: 'T' }
+        : change,
+    ),
     parseNumstat(diff(repoRoot, base.commit, '--numstat')),
     policy,
   );
@@ -128,7 +156,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   try {
     const errors = checkRepositoryBudget(process.cwd());
     if (errors.length > 0) {
-      console.error(errors.join('\n'));
+      console.error(JSON.stringify(errors, null, 2));
       process.exitCode = 1;
     } else {
       console.log('Upstream change budget passed.');

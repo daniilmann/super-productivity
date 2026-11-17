@@ -6,7 +6,7 @@ import { collectLintFiles } from './gate-policy.mjs';
 /**
  * @typedef {{ruleId: string|null, severity: number, message: string, fatal?: boolean}} Message
  * @typedef {{filePath: string, messages: Message[], errorCount: number,
- * warningCount: number, fatalErrorCount: number}} Result
+ * warningCount: number, fatalErrorCount: number, suppressedMessages?: unknown[]}} Result
  * @typedef {{status: number|null, stdout: string, stderr: string}} ProcessResult
  * @typedef {(command: string, args: string[], options: {cwd: string, shell: false}) => ProcessResult} RunProcess
  */
@@ -30,6 +30,7 @@ const isResult = (value) =>
   typeof value.filePath === 'string' &&
   Array.isArray(value.messages) &&
   value.messages.every(isMessage) &&
+  (value.suppressedMessages === undefined || Array.isArray(value.suppressedMessages)) &&
   [value.errorCount, value.warningCount, value.fatalErrorCount].every(
     (count) => typeof count === 'number' && Number.isSafeInteger(count) && count >= 0,
   );
@@ -43,7 +44,10 @@ const findings = (path, row) => {
   const errors = [];
   const ignored = row.messages.some(
     ({ ruleId, message }) =>
-      ruleId === null && message.startsWith('File ignored because'),
+      ruleId === null &&
+      /^(?:File ignored because of a matching ignore pattern|File ignored because no matching configuration was supplied\.|File ignored by default)/.test(
+        message,
+      ),
   );
   const fatal =
     row.fatalErrorCount > 0 ||
@@ -51,6 +55,9 @@ const findings = (path, row) => {
       (message) => message.fatal || /parsing error/i.test(message.message),
     );
   if (ignored) errors.push(`ESLINT_IGNORED: ${path}`);
+  if (row.suppressedMessages && row.suppressedMessages.length > 0) {
+    errors.push(`ESLINT_SUPPRESSED: ${path}`);
+  }
   if (fatal) errors.push(`ESLINT_FATAL: ${path}`);
   if (row.errorCount > 0 || row.messages.some(({ severity }) => severity === 2)) {
     errors.push(`ESLINT_ERRORS: ${path}`);
@@ -154,7 +161,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const files = collectLintFiles(process.cwd());
     const { skipped, errors } = runForkLint(files, { repoRoot: process.cwd() });
     if (errors.length > 0) {
-      console.error(errors.join('\n'));
+      console.error(JSON.stringify(errors, null, 2));
       process.exitCode = 1;
     } else {
       console.log(
