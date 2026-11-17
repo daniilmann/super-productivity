@@ -1,19 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  mkdtempSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const MODULES = realpathSync(new URL('../node_modules', import.meta.url));
 const PACKAGES = ['shared-schema', 'sync-core', 'super-sync-server'];
 for (const name of Object.keys(process.env)) {
   if (name.startsWith('GIT_')) Reflect.deleteProperty(process.env, name);
@@ -139,11 +131,26 @@ for (const added of [1, 2]) {
 }
 
 for (const violation of [false, true]) {
-  void test(`lint CLI runs real local ESLint and exits ${violation ? 'nonzero for a finding' : 'zero for clean code'}`, (t) => {
+  void test(`lint CLI runs a local ESLint stub and exits ${violation ? 'nonzero for a finding' : 'zero for clean code'}`, (t) => {
     const root = repository(t);
     put(root, 'new file.mjs', violation ? 'debugger;\n' : 'export const value = 1;\n');
     commit(root);
-    symlinkSync(MODULES, join(root, 'node_modules'), 'dir');
+    const report = [
+      {
+        filePath: join(realpathSync(root), 'new file.mjs'),
+        messages: violation
+          ? [{ ruleId: 'no-debugger', severity: 2, message: "Unexpected 'debugger'." }]
+          : [],
+        errorCount: violation ? 1 : 0,
+        warningCount: 0,
+        fatalErrorCount: 0,
+      },
+    ];
+    put(
+      root,
+      'node_modules/eslint/bin/eslint.js',
+      `console.log(${JSON.stringify(JSON.stringify(report))});\nprocess.exitCode = ${violation ? '1' : '0'};\n`,
+    );
     const result = node(root, [script('run-fork-lint')]);
     if (violation) {
       assert.notEqual(result.status, 0);
