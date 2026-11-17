@@ -90,17 +90,14 @@ describe('Fork upstream update policy', () => {
     });
 
     [false, true].forEach((isUserTriggered) => {
-      it(
-        `blocks repeated direct checks: setting=${setting}, user=${isUserTriggered}`,
-        fakeAsync(() => {
-          misc$.next(settings);
-          void service.checkForUpdate({ isUserTriggered });
-          void service.checkForUpdate({ isUserTriggered });
-          expectNoRequestOrFeedback();
-          void service.checkForUpdate({ isUserTriggered });
-          expectNoRequestOrFeedback();
-        }),
-      );
+      it(`blocks repeated direct checks: setting=${setting}, user=${isUserTriggered}`, fakeAsync(() => {
+        misc$.next(settings);
+        void service.checkForUpdate({ isUserTriggered });
+        void service.checkForUpdate({ isUserTriggered });
+        expectNoRequestOrFeedback();
+        void service.checkForUpdate({ isUserTriggered });
+        expectNoRequestOrFeedback();
+      }));
     });
   });
 
@@ -109,20 +106,17 @@ describe('Fork upstream update policy', () => {
     expectNoRequestOrFeedback();
   }));
 
-  it(
-    'does not start checks on init, setting changes or later timer intervals',
-    fakeAsync(() => {
-      service.init();
+  it('does not start checks on init, setting changes or later timer intervals', fakeAsync(() => {
+    service.init();
+    tick(30_001);
+    expectNoRequestOrFeedback();
+    [false, true, undefined, false, true].forEach((setting) => {
+      misc$.next(setting === undefined ? {} : { isCheckForUpdates: setting });
       tick(30_001);
       expectNoRequestOrFeedback();
-      [false, true, undefined, false, true].forEach((setting) => {
-        misc$.next(setting === undefined ? {} : { isCheckForUpdates: setting });
-        tick(30_001);
-        expectNoRequestOrFeedback();
-      });
-      tick(2 * 24 * 60 * 60 * 1000);
-      expectNoRequestOrFeedback();
-      discardPeriodicTasks();
-    }),
-  );
+    });
+    tick(2 * 24 * 60 * 60 * 1000);
+    expectNoRequestOrFeedback();
+    discardPeriodicTasks();
+  }));
 });

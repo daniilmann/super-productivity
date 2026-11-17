@@ -189,7 +189,9 @@
               </a>
             }
           }
-          @if (isUploadedPlugin(plugin)) {
+          @if (
+            isUploadedPlugin(plugin) && !protectedPluginIds.includes(plugin.manifest.id)
+          ) {
             <button
               mat-button
               color="warn"

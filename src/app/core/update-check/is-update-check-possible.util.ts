@@ -1,5 +1,6 @@
 import { IS_ELECTRON } from '../../app.constants';
 import { DistChannel } from '../../util/get-app-version-str';
+import { isUpstreamUpdateCheckEnabled } from './upstream-update-check-policy';
 
 /**
  * Channels whose store / package manager updates the app on its own —
@@ -20,7 +21,7 @@ const SELF_UPDATING_CHANNELS: readonly DistChannel[] = [
 
 /** Whether this build has no update channel of its own and should check for updates. */
 export const isUpdateCheckPossible = (): boolean => {
-  if (!IS_ELECTRON) {
+  if (!isUpstreamUpdateCheckEnabled() || !IS_ELECTRON) {
     // Mobile builds update via their stores; the web app updates via the
     // service worker (InitialPwaUpdateCheckService).
     return false;

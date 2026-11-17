@@ -13,6 +13,7 @@ import { PluginMetaPersistenceService } from '../../plugin-meta-persistence.serv
 import { PluginCacheService } from '../../plugin-cache.service';
 import { PluginConfigService } from '../../plugin-config.service';
 import { MAX_PLUGIN_ZIP_SIZE } from '../../plugin.const';
+import { PROTECTED_PLUGIN_IDS } from '../../protected-plugin-ids.const';
 import {
   MatCard,
   MatCardActions,
@@ -133,6 +134,7 @@ const getLanguageName = (
   ],
 })
 export class PluginManagementComponent {
+  readonly protectedPluginIds = PROTECTED_PLUGIN_IDS;
   private readonly _pluginService = inject(PluginService);
   private readonly _pluginMetaPersistenceService = inject(PluginMetaPersistenceService);
   private readonly _pluginCacheService = inject(PluginCacheService);

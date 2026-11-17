@@ -198,7 +198,11 @@ test('fork drains a mixed queue without losing or duplicating permitted UI and O
   ];
   assert.deepEqual(win.sent, expected);
   mod.processPendingProtocolUrls(win);
-  assert.deepEqual(win.sent, expected, 'draining again must not duplicate allowed actions');
+  assert.deepEqual(
+    win.sent,
+    expected,
+    'draining again must not duplicate allowed actions',
+  );
 });
 
 test('fork preserves add-note, mixed-case navigation, visibility, connect and OAuth', () => {

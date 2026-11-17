@@ -135,69 +135,60 @@ describe('Fork protected plugin removal UI', () => {
     });
   });
 
-  it(
-    'removes another uploaded plugin only after confirmation through its button',
-    fakeAsync(() => {
-      const card = renderUploaded('another-plugin', 'Other Plugin', true);
+  it('removes another uploaded plugin only after confirmation through its button', fakeAsync(() => {
+    const card = renderUploaded('another-plugin', 'Other Plugin', true);
+    const button = removeButton(card);
+    expect(button).toBeDefined();
+    button!.click();
+    flushMicrotasks();
+
+    expect(dialog).toHaveBeenCalledOnceWith(DialogConfirmComponent, {
+      restoreFocus: true,
+      data: {
+        message: T.PLUGINS.CONFIRM_REMOVE,
+        translateParams: { name: 'Other Plugin' },
+        okTxt: T.PLUGINS.REMOVE,
+      },
+    });
+    expect(remove).toHaveBeenCalledOnceWith('another-plugin');
+  }));
+
+  [false, undefined].forEach((result) => {
+    it(`keeps another uploaded plugin when confirmation returns ${result}`, fakeAsync(() => {
+      dialog.and.returnValue({ afterClosed: () => of(result) });
+      const card = renderUploaded('another-plugin', 'Other Plugin', false);
       const button = removeButton(card);
       expect(button).toBeDefined();
       button!.click();
       flushMicrotasks();
 
-      expect(dialog).toHaveBeenCalledOnceWith(DialogConfirmComponent, {
-        restoreFocus: true,
-        data: {
-          message: T.PLUGINS.CONFIRM_REMOVE,
-          translateParams: { name: 'Other Plugin' },
-          okTxt: T.PLUGINS.REMOVE,
-        },
-      });
-      expect(remove).toHaveBeenCalledOnceWith('another-plugin');
-    }),
-  );
-
-  [false, undefined].forEach((result) => {
-    it(
-      `keeps another uploaded plugin when confirmation returns ${result}`,
-      fakeAsync(() => {
-        dialog.and.returnValue({ afterClosed: () => of(result) });
-        const card = renderUploaded('another-plugin', 'Other Plugin', false);
-        const button = removeButton(card);
-        expect(button).toBeDefined();
-        button!.click();
-        flushMicrotasks();
-
-        expect(dialog).toHaveBeenCalledTimes(1);
-        expect(remove).not.toHaveBeenCalled();
-      }),
-    );
+      expect(dialog).toHaveBeenCalledTimes(1);
+      expect(remove).not.toHaveBeenCalled();
+    }));
   });
 
-  it(
-    'preserves Remove all uploaded plugins when only sp-telos is installed',
-    fakeAsync(() => {
-      renderUploaded('sp-telos', 'Product plugin', true);
-      const root: HTMLElement = fixture.nativeElement;
-      const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
-        (candidate) =>
-          candidate.textContent?.includes(T.PLUGINS.REMOVE_ALL_UPLOADED_PLUGINS),
-      );
-      expect(button).toBeDefined();
-      expect(button?.disabled).toBe(false);
-      button!.click();
-      flushMicrotasks();
+  it('preserves Remove all uploaded plugins when only sp-telos is installed', fakeAsync(() => {
+    renderUploaded('sp-telos', 'Product plugin', true);
+    const root: HTMLElement = fixture.nativeElement;
+    const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
+      (candidate) =>
+        candidate.textContent?.includes(T.PLUGINS.REMOVE_ALL_UPLOADED_PLUGINS),
+    );
+    expect(button).toBeDefined();
+    expect(button?.disabled).toBe(false);
+    button!.click();
+    flushMicrotasks();
 
-      expect(dialog).toHaveBeenCalledOnceWith(DialogConfirmComponent, {
-        restoreFocus: true,
-        data: {
-          message: T.PLUGINS.CONFIRM_CLEAR_CACHE,
-          translateParams: { count: 1 },
-          okTxt: T.PLUGINS.REMOVE_ALL_UPLOADED_PLUGINS,
-        },
-      });
-      expect(clearCache).toHaveBeenCalledTimes(1);
-      expect(clearMemory).toHaveBeenCalledTimes(1);
-      expect(remove).not.toHaveBeenCalled();
-    }),
-  );
+    expect(dialog).toHaveBeenCalledOnceWith(DialogConfirmComponent, {
+      restoreFocus: true,
+      data: {
+        message: T.PLUGINS.CONFIRM_CLEAR_CACHE,
+        translateParams: { count: 1 },
+        okTxt: T.PLUGINS.REMOVE_ALL_UPLOADED_PLUGINS,
+      },
+    });
+    expect(clearCache).toHaveBeenCalledTimes(1);
+    expect(clearMemory).toHaveBeenCalledTimes(1);
+    expect(remove).not.toHaveBeenCalled();
+  }));
 });

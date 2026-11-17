@@ -82,61 +82,6 @@ export const processProtocolUrl = (url: string, mainWin: BrowserWindow | null): 
           showOrFocus(mainWin);
         }
         break;
-      case 'create-task': {
-        // Title may come from the path segment (legacy/existing form,
-        // `create-task/<title>`) or a `title` query param — either works.
-        const taskTitle =
-          pathParts.length > 0
-            ? decodeURIComponent(pathParts[0])
-            : urlObj.searchParams.get('title');
-        // Forward when the title is present at all, including an empty/whitespace
-        // `?title=` (`!== null`, not truthiness): the renderer surfaces the
-        // empty-title error snack, so an empty title fails loudly rather than
-        // silently. A missing param (`null`) is a no-op.
-        if (taskTitle !== null) {
-          // Don't log the title — the log is exportable and must not contain user content.
-          log('Creating task from protocol URL');
-
-          if (mainWin && mainWin.webContents) {
-            // Surface the window so the success/error snack — the only
-            // feedback channel for a URL-triggered action — is actually
-            // seen, matching every other protocol action below. Without
-            // this, macOS's `open-url` path (and any platform started
-            // minimized to tray) never brings the window forward.
-            showOrFocus(mainWin);
-            mainWin.webContents.send(IPC.ADD_TASK_FROM_APP_URI, {
-              title: taskTitle,
-              notes: urlObj.searchParams.get('notes') ?? undefined,
-              projectId: urlObj.searchParams.get('projectId') ?? undefined,
-            });
-          }
-        }
-        break;
-      }
-      case 'complete-task': {
-        const taskTitle = urlObj.searchParams.get('title');
-        // See the `create-task` note: forward a present-but-empty title so the
-        // renderer surfaces the error snack; a missing param is a no-op.
-        if (taskTitle !== null) {
-          // Don't log the title — see note above.
-          log('Completing task from protocol URL');
-
-          if (mainWin && mainWin.webContents) {
-            // See the showOrFocus note in the `create-task` case above.
-            showOrFocus(mainWin);
-            mainWin.webContents.send(IPC.COMPLETE_TASK_FROM_APP_URI, {
-              title: taskTitle,
-            });
-          }
-        }
-        break;
-      }
-      case 'task-toggle-start':
-        // Send IPC message to toggle task start
-        if (mainWin && mainWin.webContents) {
-          mainWin.webContents.send(IPC.TASK_TOGGLE_START);
-        }
-        break;
       case 'plainspace-connect':
         // Bounce-back from the plainspace.org connect flow ("Open Super
         // Productivity"): just surface the window. The user pastes the token

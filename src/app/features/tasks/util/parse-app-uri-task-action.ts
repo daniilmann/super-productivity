@@ -12,13 +12,8 @@ export interface AppUriCompleteTaskAction {
 
 export type AppUriTaskAction = AppUriAddTaskAction | AppUriCompleteTaskAction;
 
-/**
- * Every action host this parser recognizes. Exported so
- * `tools/verify-android-url-hosts.test.js` can check that
- * `AndroidManifest.xml` declares each one; the parser branches on this list so
- * the two cannot drift.
- */
-export const TASK_ACTION_HOSTS = ['create-task', 'complete-task'] as const;
+// Task-writing URL actions are disabled in this fork.
+export const TASK_ACTION_HOSTS = [] as readonly string[];
 
 const isTaskActionHost = (host: string): boolean =>
   (TASK_ACTION_HOSTS as readonly string[]).includes(host);

@@ -68,7 +68,7 @@ export class UpdateCheckService {
   }
 
   async checkForUpdate({ isUserTriggered = false } = {}): Promise<void> {
-    if (this._isCheckInFlight) {
+    if (!isUpdateCheckPossible() || this._isCheckInFlight) {
       return;
     }
     this._isCheckInFlight = true;

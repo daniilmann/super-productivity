@@ -16,6 +16,7 @@ import {
   AppUriAddTaskAction,
   AppUriCompleteTaskAction,
   AppUriTaskAction,
+  TASK_ACTION_HOSTS,
 } from '../util/parse-app-uri-task-action';
 import { PENDING_CAPACITOR_APP_URI_ACTION } from './pending-capacitor-app-uri-action';
 import { escapeHtml } from '../../../util/escape-html';
@@ -56,6 +57,10 @@ export class AppUriTaskActionsService implements OnDestroy {
   private _subs = new Subscription();
 
   constructor() {
+    if (TASK_ACTION_HOSTS.length === 0) {
+      return;
+    }
+
     const electronActions$ = merge(
       ipcAddTaskFromAppUri$.pipe(
         map((payload): AppUriAddTaskAction => ({ type: 'add', ...payload })),

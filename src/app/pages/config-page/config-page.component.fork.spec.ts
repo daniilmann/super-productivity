@@ -96,46 +96,40 @@ describe('Fork upstream update policy: settings page', () => {
   });
 
   [true, false, undefined].forEach((setting) => {
-    it(
-      `cannot start HTTP through the real page method with setting ${setting}`,
-      fakeAsync(() => {
-        misc$.next(setting === undefined ? {} : { isCheckForUpdates: setting });
-        fixture.componentInstance.checkForUpdates();
-        const requests = http.match(() => true);
-        expect(requests.length)
-          .withContext('page delegates to the real update service')
-          .toBe(0);
-        requests.forEach((request) => request.flush({ tag_name: 'v999.0.0' }));
-        flushMicrotasks();
-        expect(banner.open).not.toHaveBeenCalled();
-        expect(snack.open).not.toHaveBeenCalled();
-      }),
-    );
+    it(`cannot start HTTP through the real page method with setting ${setting}`, fakeAsync(() => {
+      misc$.next(setting === undefined ? {} : { isCheckForUpdates: setting });
+      fixture.componentInstance.checkForUpdates();
+      const requests = http.match(() => true);
+      expect(requests.length)
+        .withContext('page delegates to the real update service')
+        .toBe(0);
+      requests.forEach((request) => request.flush({ tag_name: 'v999.0.0' }));
+      flushMicrotasks();
+      expect(banner.open).not.toHaveBeenCalled();
+      expect(snack.open).not.toHaveBeenCalled();
+    }));
   });
 
-  it(
-    'keeps version copy, changelog, logs, privacy and feedback controls',
-    fakeAsync(() => {
-      const root: HTMLElement = fixture.nativeElement;
-      const footer = root.querySelector('footer')!;
-      const links = Array.from(footer.querySelectorAll('a'));
-      expect(links.some((link) => link.textContent?.trim() === 'Logs')).toBe(true);
-      expect(links.some((link) => link.textContent?.trim() === 'Changelog')).toBe(true);
-      expect(
-        links.some((link) => link.textContent?.trim() === T.PS.PRIVACY_POLICY),
-      ).toBe(true);
-      expect(
-        links.some((link) => link.textContent?.trim() === T.PS.PROVIDE_FEEDBACK),
-      ).toBe(true);
-      const version = footer.querySelector<HTMLAnchorElement>('a.version');
-      expect(version).not.toBeNull();
-      version!.click();
-      flushMicrotasks();
-      expect(copy).toHaveBeenCalledOnceWith(
-        fixture.componentInstance.appVersion,
-        'Version',
-      );
-      http.expectNone(() => true);
-    }),
-  );
+  it('keeps version copy, changelog, logs, privacy and feedback controls', fakeAsync(() => {
+    const root: HTMLElement = fixture.nativeElement;
+    const footer = root.querySelector('footer')!;
+    const links = Array.from(footer.querySelectorAll('a'));
+    expect(links.some((link) => link.textContent?.trim() === 'Logs')).toBe(true);
+    expect(links.some((link) => link.textContent?.trim() === 'Changelog')).toBe(true);
+    expect(links.some((link) => link.textContent?.trim() === T.PS.PRIVACY_POLICY)).toBe(
+      true,
+    );
+    expect(links.some((link) => link.textContent?.trim() === T.PS.PROVIDE_FEEDBACK)).toBe(
+      true,
+    );
+    const version = footer.querySelector<HTMLAnchorElement>('a.version');
+    expect(version).not.toBeNull();
+    version!.click();
+    flushMicrotasks();
+    expect(copy).toHaveBeenCalledOnceWith(
+      fixture.componentInstance.appVersion,
+      'Version',
+    );
+    http.expectNone(() => true);
+  }));
 });

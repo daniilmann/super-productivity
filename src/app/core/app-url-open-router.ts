@@ -1,4 +1,5 @@
 import { Subject } from 'rxjs';
+import { isBlockedTaskAppUri } from './app-uri-actions/is-blocked-task-app-uri';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports -- grandfathered layer-boundary debt
 import { pendingCapacitorAppUriAction$ } from '../features/tasks/app-uri-actions/pending-capacitor-app-uri-action';
 import { pendingCapacitorQuickAction$ } from './app-uri-actions/pending-capacitor-quick-action';
@@ -44,6 +45,10 @@ export const routeCapacitorAppUrl = (
   oAuthSink: Subject<string> = pendingCapacitorOAuthUrl$,
   quickActionSink: Subject<AppUriQuickAction> = pendingCapacitorQuickAction$,
 ): AppUrlRoute => {
+  if (isBlockedTaskAppUri(url)) {
+    return 'other';
+  }
+
   const action = parseAppUriTaskAction(url);
   if (action) {
     taskSink.next(action);
