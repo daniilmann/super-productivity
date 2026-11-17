@@ -20,27 +20,38 @@ export const BACKUP_DOMAINS = [
   'device_sharedpref',
 ];
 
+/**
+ * @typedef {{name: string, depth: number, ancestors: string[], attrs: Record<string, string>}} XmlElement
+ * @typedef {{manifest: string, resources: string, backup: string, extraction: string}} BackupDumps
+ */
+
 // Parses aapt2 xmltree output into elements with their ancestor names and plain attributes.
+/** @param {string} text @returns {XmlElement[]} */
 export function parseXmlTree(text) {
+  /** @type {XmlElement[]} */
   const elements = [];
+  /** @type {XmlElement[]} */
   const stack = [];
   for (const line of text.split('\n')) {
     const el = line.match(/^(\s*)E: ([\w:-]+)/);
     if (el) {
       const depth = el[1].length;
       while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
+      /** @type {XmlElement} */
       const node = { name: el[2], depth, ancestors: stack.map((s) => s.name), attrs: {} };
       stack.push(node);
       elements.push(node);
       continue;
     }
     const attr = line.match(/^(\s*)A: ([\w:./-]+?)(?:\(0x[0-9a-f]+\))?="([^"]*)"/);
-    if (attr && stack.length) stack[stack.length - 1].attrs[attr[2].replace(/^.*:/, '')] = attr[3];
+    if (attr && stack.length)
+      stack[stack.length - 1].attrs[attr[2].replace(/^.*:/, '')] = attr[3];
   }
   return elements;
 }
 
 // Resource file referenced by a manifest attribute, e.g. fullBackupContent -> "backup_rules".
+/** @param {string} manifest @param {string} resources @param {string} attribute */
 export function referencedXml(manifest, resources, attribute) {
   const ref = manifest.match(new RegExp(`:${attribute}\\(0x[0-9a-f]+\\)=@(0x[0-9a-f]+)`));
   if (!ref) return null;
@@ -48,37 +59,56 @@ export function referencedXml(manifest, resources, attribute) {
   return res ? res[1] : null;
 }
 
+/** @param {XmlElement[]} elements @param {string} [section] */
 const wholeExclusions = (elements, section) =>
   new Set(
     elements
-      .filter((e) => e.name === 'exclude' && e.attrs.path === '.' && (!section || e.ancestors.includes(section)))
+      .filter(
+        (e) =>
+          e.name === 'exclude' &&
+          e.attrs.path === '.' &&
+          (!section || e.ancestors.includes(section)),
+      )
       .map((e) => e.attrs.domain),
   );
 
+/** @param {BackupDumps} dumps @returns {string[]} */
 export function checkBackup({ manifest, resources, backup, extraction }) {
   const errors = [];
   const backupName = referencedXml(manifest, resources, 'fullBackupContent');
   const extractionName = referencedXml(manifest, resources, 'dataExtractionRules');
-  if (backupName !== 'backup_rules') errors.push(`fullBackupContent points at ${backupName}`);
-  if (extractionName !== 'data_extraction_rules') errors.push(`dataExtractionRules points at ${extractionName}`);
+  if (backupName !== 'backup_rules')
+    errors.push(`fullBackupContent points at ${String(backupName)}`);
+  if (extractionName !== 'data_extraction_rules')
+    errors.push(`dataExtractionRules points at ${String(extractionName)}`);
 
   const b = parseXmlTree(backup);
-  if (!b.some((e) => e.name === 'full-backup-content')) errors.push('backup rules: no full-backup-content');
+  if (!b.some((e) => e.name === 'full-backup-content'))
+    errors.push('backup rules: no full-backup-content');
   if (b.some((e) => e.name === 'include')) errors.push('backup rules: include present');
   const bMissing = BACKUP_DOMAINS.filter((d) => !wholeExclusions(b).has(d));
-  if (bMissing.length) errors.push(`backup rules: domains not excluded: ${bMissing.join(', ')}`);
+  if (bMissing.length)
+    errors.push(`backup rules: domains not excluded: ${bMissing.join(', ')}`);
 
   const x = parseXmlTree(extraction);
-  if (!x.some((e) => e.name === 'cloud-backup')) errors.push('extraction rules: no cloud-backup section');
+  if (!x.some((e) => e.name === 'cloud-backup'))
+    errors.push('extraction rules: no cloud-backup section');
   if (x.some((e) => e.name === 'include' && e.ancestors.includes('cloud-backup')))
     errors.push('extraction rules: include in cloud-backup');
-  const xMissing = BACKUP_DOMAINS.filter((d) => !wholeExclusions(x, 'cloud-backup').has(d));
-  if (xMissing.length) errors.push(`extraction rules: cloud-backup domains not excluded: ${xMissing.join(', ')}`);
+  const xMissing = BACKUP_DOMAINS.filter(
+    (d) => !wholeExclusions(x, 'cloud-backup').has(d),
+  );
+  if (xMissing.length)
+    errors.push(
+      `extraction rules: cloud-backup domains not excluded: ${xMissing.join(', ')}`,
+    );
   return errors;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const [manifest, resources, backup, extraction] = process.argv.slice(2).map((p) => readFileSync(p, 'utf8'));
+  const [manifest, resources, backup, extraction] = process.argv
+    .slice(2)
+    .map((p) => readFileSync(p, 'utf8'));
   const errors = checkBackup({ manifest, resources, backup, extraction });
   for (const e of errors) console.error(`::error::${e}`);
   if (errors.length) process.exit(1);

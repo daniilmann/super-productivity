@@ -34,31 +34,50 @@ const TARGET_PACKAGE = `android:targetPackage="${UPSTREAM_APP_ID}"`;
 
 export class IdentityError extends Error {}
 
+/** @param {string} msg @returns {never} */
 function fail(msg) {
   throw new IdentityError(msg);
 }
 
-/** Parses a fork release tag; throws on any other format. */
+/**
+ * Parses a fork release tag; throws on any other format.
+ * @param {string} tag
+ */
 export function parseTag(tag) {
   const m = TAG_RE.exec(tag);
   if (!m) fail(`tag ${JSON.stringify(tag)} is not vM.m.p-fork.N without leading zeros`);
   const [M, mi, p, N] = m.slice(1).map(Number);
-  return { M, m: mi, p, N, upstreamTag: `v${M}.${mi}.${p}`, version: tag.slice(1) };
+  return {
+    M,
+    m: mi,
+    p,
+    N,
+    upstreamTag: `v${String(M)}.${String(mi)}.${String(p)}`,
+    version: tag.slice(1),
+  };
 }
 
-/** versionCode = M*10^7 + m*10^5 + p*10^3 + N within the documented limits. */
+/**
+ * versionCode = M*10^7 + m*10^5 + p*10^3 + N within the documented limits.
+ * @param {{M: number, m: number, p: number, N: number}} version
+ */
 export function versionCode({ M, m, p, N }) {
-  if (m > 99) fail(`minor ${m} > 99`);
-  if (p > 99) fail(`patch ${p} > 99`);
-  if (N < 1 || N > 999) fail(`fork number ${N} outside 1..999`);
+  if (m > 99) fail(`minor ${String(m)} > 99`);
+  if (p > 99) fail(`patch ${String(p)} > 99`);
+  if (N < 1 || N > 999) fail(`fork number ${String(N)} outside 1..999`);
   const code = M * 1e7 + m * 1e5 + p * 1e3 + N;
-  if (!Number.isSafeInteger(code) || code > INT32_MAX) fail(`versionCode ${code} > ${INT32_MAX}`);
+  if (!Number.isSafeInteger(code) || code > INT32_MAX)
+    fail(`versionCode ${String(code)} > ${String(INT32_MAX)}`);
   return code;
 }
 
-/** Reads fork/upstream-base: exactly `tag=...` and `commit=<40 hex>`. */
+/**
+ * Reads fork/upstream-base: exactly `tag=...` and `commit=<40 hex>`.
+ * @param {string} text
+ */
 export function parseBase(text) {
   const lines = text.split('\n').filter((l) => l !== '');
+  /** @type {Record<string, string|undefined>} */
   const kv = {};
   for (const line of lines) {
     const m = /^(tag|commit)=(.+)$/.exec(line);
@@ -66,75 +85,128 @@ export function parseBase(text) {
     kv[m[1]] = m[2];
   }
   if (!/^v\d+\.\d+\.\d+$/.test(kv.tag ?? '')) fail(`${FILES.base}: bad or missing tag=`);
-  if (!/^[0-9a-f]{40}$/.test(kv.commit ?? '')) fail(`${FILES.base}: bad or missing commit=`);
+  if (!/^[0-9a-f]{40}$/.test(kv.commit ?? ''))
+    fail(`${FILES.base}: bad or missing commit=`);
   return kv;
 }
 
-/** The new code must be greater than the code of every other fork tag of this format. */
+/**
+ * The new code must be greater than the code of every other fork tag of this format.
+ * @param {string} tag
+ * @param {number} code
+ * @param {string[]} otherTags
+ */
 export function checkMonotonic(tag, code, otherTags) {
   for (const other of otherTags) {
     if (other === tag || !TAG_RE.test(other)) continue;
     const otherCode = versionCode(parseTag(other));
-    if (code <= otherCode) fail(`versionCode ${code} of ${tag} is not greater than ${otherCode} of ${other}`);
+    if (code <= otherCode)
+      fail(
+        `versionCode ${String(code)} of ${tag} is not greater than ${String(otherCode)} of ${other}`,
+      );
   }
 }
 
+/** @param {string} text @param {RegExp} re @param {string} replacement @param {string} what */
 function replaceExactlyOnce(text, re, replacement, what) {
   const hits = text.match(re) ?? [];
-  if (hits.length !== 1) fail(`${what}: expected exactly 1 match, found ${hits.length}`);
+  if (hits.length !== 1)
+    fail(`${what}: expected exactly 1 match, found ${String(hits.length)}`);
   return text.replace(re, replacement);
 }
 
-/** applicationId, versionCode and versionName in build.gradle — exactly once each. */
+/**
+ * applicationId, versionCode and versionName in build.gradle — exactly once each.
+ * @param {string} text
+ * @param {{appId: string, code: number, name: string}} identity
+ */
 export function substituteGradle(text, { appId, code, name }) {
-  let out = replaceExactlyOnce(text, APP_ID_RE, `$1"${appId}"`, 'build.gradle applicationId');
-  out = replaceExactlyOnce(out, VERSION_CODE_RE, `$1${code}`, 'build.gradle versionCode');
-  out = replaceExactlyOnce(out, VERSION_NAME_RE, `$1"${name}"`, 'build.gradle versionName');
+  let out = replaceExactlyOnce(
+    text,
+    APP_ID_RE,
+    `$1"${appId}"`,
+    'build.gradle applicationId',
+  );
+  out = replaceExactlyOnce(
+    out,
+    VERSION_CODE_RE,
+    `$1${String(code)}`,
+    'build.gradle versionCode',
+  );
+  out = replaceExactlyOnce(
+    out,
+    VERSION_NAME_RE,
+    `$1"${name}"`,
+    'build.gradle versionName',
+  );
   return out;
 }
 
-/** targetPackage of the three upstream shortcuts. */
+/** targetPackage of the three upstream shortcuts. @param {string} text @param {string} appId */
 export function substituteShortcuts(text, appId) {
   const count = text.split(TARGET_PACKAGE).length - 1;
-  if (count !== 3) fail(`shortcuts.xml: expected 3 upstream targetPackage attributes, found ${count}`);
+  if (count !== 3)
+    fail(
+      `shortcuts.xml: expected 3 upstream targetPackage attributes, found ${String(count)}`,
+    );
   return text.split(TARGET_PACKAGE).join(`android:targetPackage="${appId}"`);
 }
 
-/** Literal checks on the current tree, without changing it. */
+/** Literal checks on the current tree, without changing it. @param {string} root */
 export function checkTree(root) {
+  /** @param {string} f */
   const read = (f) => readFileSync(join(root, f), 'utf8');
   parseBase(read(FILES.base));
   const gradle = read(FILES.gradle);
   substituteGradle(gradle, { appId: APP_ID, code: 1, name: '0.0.0-fork.1' });
   if (!(gradle.match(APP_ID_RE) ?? [])[0]?.includes(`"${UPSTREAM_APP_ID}"`)) {
-    fail('build.gradle applicationId is not the upstream literal (substitution must not be committed)');
+    fail(
+      'build.gradle applicationId is not the upstream literal (substitution must not be committed)',
+    );
   }
   substituteShortcuts(read(FILES.shortcuts), APP_ID);
 }
 
+/** @param {string} path @param {string} version */
 function setJsonVersion(path, version) {
+  /** @type {unknown} */
   const obj = JSON.parse(readFileSync(path, 'utf8'));
-  if (typeof obj.version !== 'string') fail(`${path}: no version`);
+  if (
+    typeof obj !== 'object' ||
+    obj === null ||
+    !('version' in obj) ||
+    typeof obj.version !== 'string'
+  )
+    fail(`${path}: no version`);
   obj.version = version;
   writeFileSync(path, JSON.stringify(obj, null, 2) + '\n');
 }
 
+/** @param {string} root */
 function gitTags(root) {
-  const out = execFileSync('git', ['-C', root, 'tag', '--list', 'v*-fork.*'], { encoding: 'utf8' });
+  const out = execFileSync('git', ['-C', root, 'tag', '--list', 'v*-fork.*'], {
+    encoding: 'utf8',
+  });
   return out.split('\n').filter(Boolean);
 }
 
+/** @param {string} root @param {string} tag @param {string[]} [otherTags] */
 export function apply(root, tag, otherTags = gitTags(root)) {
   const t = parseTag(tag);
   const code = versionCode(t);
   const base = parseBase(readFileSync(join(root, FILES.base), 'utf8'));
-  if (t.upstreamTag !== base.tag) fail(`tag ${tag} is for ${t.upstreamTag}, base is ${base.tag}`);
+  if (t.upstreamTag !== base.tag)
+    fail(`tag ${tag} is for ${t.upstreamTag}, base is ${String(base.tag)}`);
   checkMonotonic(tag, code, otherTags);
 
   const gradlePath = join(root, FILES.gradle);
   const shortcutsPath = join(root, FILES.shortcuts);
   // Compute everything first, then write: a failure leaves the tree untouched.
-  const gradle = substituteGradle(readFileSync(gradlePath, 'utf8'), { appId: APP_ID, code, name: t.version });
+  const gradle = substituteGradle(readFileSync(gradlePath, 'utf8'), {
+    appId: APP_ID,
+    code,
+    name: t.version,
+  });
   const shortcuts = substituteShortcuts(readFileSync(shortcutsPath, 'utf8'), APP_ID);
   writeFileSync(gradlePath, gradle);
   writeFileSync(shortcutsPath, shortcuts);
@@ -143,7 +215,9 @@ export function apply(root, tag, otherTags = gitTags(root)) {
   return { version: t.version, versionCode: code, applicationId: APP_ID };
 }
 
+/** @param {string[]} argv */
 function main(argv) {
+  /** @type {{root: string, check?: boolean, tag?: string}} */
   const args = { root: '.' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -157,8 +231,10 @@ function main(argv) {
     checkTree(args.root);
     console.log('fork identity: tree literals ok');
   } else {
-    const r = apply(args.root, args.tag);
-    console.log(`fork identity: version ${r.version}, versionCode ${r.versionCode}, applicationId ${r.applicationId}`);
+    const r = apply(args.root, args.tag ?? fail('use exactly one of --check or --tag'));
+    console.log(
+      `fork identity: version ${r.version}, versionCode ${String(r.versionCode)}, applicationId ${r.applicationId}`,
+    );
   }
 }
 
@@ -166,7 +242,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
     main(process.argv.slice(2));
   } catch (e) {
-    console.error(`fork identity: ${e.message}`);
+    console.error(`fork identity: ${e instanceof Error ? e.message : String(e)}`);
     process.exit(1);
   }
 }

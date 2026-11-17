@@ -160,7 +160,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.log(
         skipped
           ? 'Fork lint skipped: empty file list.'
-          : `Fork lint passed: ${files.length} files.`,
+          : `Fork lint passed: ${String(files.length)} files.`,
       );
     }
   } catch (error) {

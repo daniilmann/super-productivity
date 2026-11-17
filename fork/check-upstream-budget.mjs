@@ -77,7 +77,7 @@ export const checkUpstreamBudget = (changes, stats, policy) => {
       errors.push(`BUDGET_NOT_APPLICABLE: ${change.path}: бюджет строк неприменим`);
     } else if (stat.added > policy.maxAddedLinesPerFile) {
       errors.push(
-        `BUDGET_EXCEEDED: ${change.path}: added ${stat.added} > limit ${policy.maxAddedLinesPerFile}`,
+        `BUDGET_EXCEEDED: ${change.path}: added ${String(stat.added)} > limit ${String(policy.maxAddedLinesPerFile)}`,
       );
     }
   }

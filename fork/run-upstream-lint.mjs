@@ -12,12 +12,26 @@ export const SKIPPED_TOOL_TESTS = [
   'tools/verify-windows-artifact-contract.test.js',
 ];
 
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+const isRecord = (value) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** @param {unknown} scripts @returns {string[]} */
 export function lintSteps(scripts) {
+  if (
+    !isRecord(scripts) ||
+    typeof scripts.lint !== 'string' ||
+    typeof scripts['test:tools'] !== 'string'
+  ) {
+    throw new Error('upstream scripts must contain lint and test:tools strings');
+  }
+  const toolScript = scripts['test:tools'];
   const steps = scripts.lint.split('&&').map((s) => s.trim());
-  if (!steps.includes('npm run test:tools')) throw new Error('upstream lint no longer runs test:tools');
+  if (!steps.includes('npm run test:tools'))
+    throw new Error('upstream lint no longer runs test:tools');
   return steps.map((step) => {
     if (step !== 'npm run test:tools') return step;
-    let tools = scripts['test:tools'];
+    let tools = toolScript;
     for (const f of SKIPPED_TOOL_TESTS) {
       if (!tools.includes(` ${f}`)) throw new Error(`test:tools no longer lists ${f}`);
       tools = tools.replace(` ${f}`, '');
@@ -28,10 +42,13 @@ export function lintSteps(scripts) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   for (const f of SKIPPED_TOOL_TESTS) {
-    if (!existsSync(f)) throw new Error(`${f} is gone upstream; drop it from the skip list`);
+    if (!existsSync(f))
+      throw new Error(`${f} is gone upstream; drop it from the skip list`);
   }
-  const { scripts } = JSON.parse(readFileSync('package.json', 'utf8'));
-  for (const step of lintSteps(scripts)) {
+  /** @type {unknown} */
+  const metadata = JSON.parse(readFileSync('package.json', 'utf8'));
+  if (!isRecord(metadata)) throw new Error('package.json must contain an object');
+  for (const step of lintSteps(metadata.scripts)) {
     console.log(`$ ${step}`);
     execSync(step, { stdio: 'inherit' });
   }

@@ -7,6 +7,11 @@ import { runForkLint } from './run-fork-lint.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
+/**
+ * @typedef {{message: string, severity: number, ruleId: string|null}} ProbeMessage
+ * @typedef {{filePath: string, messages: ProbeMessage[]}} ProbeResult
+ */
+
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 const isRecord = (value) =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -27,12 +32,13 @@ const packageVersion = (name) => {
   return metadata.version;
 };
 
-/** @param {string} output @returns {import('eslint').ESLint.LintResult[]} */
+/** @param {string} output @returns {ProbeResult[]} */
 const lintReport = (output) => {
   const report = /** @type {unknown} */ (JSON.parse(output));
   if (!Array.isArray(report)) throw new Error('Probe received a non-array ESLint report');
+  const rows = /** @type {unknown[]} */ (report);
   // Validate only the fields consumed by this probe, before narrowing the report.
-  for (const row of /** @type {unknown[]} */ (report)) {
+  for (const row of rows) {
     if (
       !isRecord(row) ||
       typeof row.filePath !== 'string' ||
@@ -51,12 +57,12 @@ const lintReport = (output) => {
       }
     }
   }
-  return /** @type {import('eslint').ESLint.LintResult[]} */ (report);
+  return /** @type {ProbeResult[]} */ (rows);
 };
 
 /**
  * @param {string[]} files
- * @returns {{outcome: ReturnType<typeof runForkLint>, report: import('eslint').ESLint.LintResult[]}}
+ * @returns {{outcome: ReturnType<typeof runForkLint>, report: ProbeResult[]}}
  */
 const inspect = (files) => {
   let stdout = '';
@@ -189,13 +195,13 @@ const probe = async () => {
     );
     writeFileSync(
       join(repoRoot, complexity),
-      `export const complexProbe = (value: number): number => {\n${Array.from({ length: 31 }, (_, index) => `if (value === ${index}) { return ${index}; }`).join('\n')}\nreturn -1;\n};\n`,
+      `export const complexProbe = (value: number): number => {\n${Array.from({ length: 31 }, (_, index) => `if (value === ${String(index)}) { return ${String(index)}; }`).join('\n')}\nreturn -1;\n};\n`,
     );
     writeFileSync(
       join(repoRoot, size),
       Array.from(
         { length: 401 },
-        (_, index) => `export const probeLine${index} = ${index};\n`,
+        (_, index) => `export const probeLine${String(index)} = ${String(index)};\n`,
       ).join(''),
     );
     writeFileSync(join(repoRoot, ignored), 'export const ignoredProbe = 1;\n');
