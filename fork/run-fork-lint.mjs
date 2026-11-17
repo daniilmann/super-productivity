@@ -41,8 +41,9 @@ const isReport = (value) => Array.isArray(value) && value.every(isResult);
 const findings = (path, row) => {
   /** @type {string[]} */
   const errors = [];
-  const ignored = row.messages.some(({ message }) =>
-    /\bignored\b|no matching configuration/i.test(message),
+  const ignored = row.messages.some(
+    ({ ruleId, message }) =>
+      ruleId === null && message.startsWith('File ignored because'),
   );
   const fatal =
     row.fatalErrorCount > 0 ||

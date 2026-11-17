@@ -1,15 +1,17 @@
 // CommonJS can export a promise; dynamic imports keep this config under the
 // same strict no-require-imports rule as every other new JavaScript file.
 module.exports = (async () => {
+  const { defineConfig } = await import('eslint/config');
   const { default: tseslint } = await import('typescript-eslint');
   const { default: upstream } = await import('./eslint.config.js');
   const files = ['**/*.{ts,tsx,js,mjs}'];
 
-  return tseslint.config(
+  return defineConfig(
     ...upstream,
     {
       files,
-      extends: [tseslint.configs.strictTypeChecked],
+      // Preserve tseslint.config's file override; defineConfig intersects file globs.
+      extends: tseslint.configs.strictTypeChecked.map((config) => ({ ...config, files })),
       languageOptions: {
         parserOptions: {
           tsconfigRootDir: __dirname,
