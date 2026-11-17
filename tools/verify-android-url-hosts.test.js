@@ -65,11 +65,10 @@ test('the manifest declares hosts on the app scheme', () => {
   assert.ok(DECLARED_HOSTS.size > 0, `no <data> hosts for ${SCHEME} in the manifest`);
 });
 
-test('every task action host is declared in the manifest', () => {
-  assert.ok(TASK_ACTION_HOSTS.length > 0, 'TASK_ACTION_HOSTS is empty');
-  TASK_ACTION_HOSTS.forEach((host) =>
-    assert.ok(DECLARED_HOSTS.has(host), `${SCHEME}://${host} is not declared`),
-  );
+test('task action hosts are disabled in the parser and native manifest', () => {
+  assert.deepEqual(TASK_ACTION_HOSTS, []);
+  assert.ok(!DECLARED_HOSTS.has('create-task'), 'create-task is still declared');
+  assert.ok(!DECLARED_HOSTS.has('complete-task'), 'complete-task is still declared');
 });
 
 test('every UI action host is declared in the manifest', () => {

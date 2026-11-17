@@ -46,34 +46,6 @@ describe('routeCapacitorAppUrl', () => {
     'com.super-productivity.app://inbox',
   ];
 
-  describe('task route family', () => {
-    it('should still deliver a task action emitted before anyone subscribed', () => {
-      expect(route('com.super-productivity.app://create-task?title=hello')).toBe('task');
-
-      // Subscribing only now is the cold-launch case: Angular, and therefore
-      // AppUriTaskActionsService, did not exist when the URL arrived.
-      const received: AppUriTaskAction[] = [];
-      taskSink.subscribe((a) => received.push(a));
-
-      expect(received.length).toBe(1);
-      expect(received[0].type).toBe('add');
-      expect(received[0].title).toBe('hello');
-    });
-
-    it('should not leak a task action into the other route families', () => {
-      let oAuthReceived = false;
-      oAuthSink.subscribe(() => (oAuthReceived = true));
-
-      route('com.super-productivity.app://create-task?title=hello');
-
-      let quickReceived = false;
-      quickSink.subscribe(() => (quickReceived = true));
-
-      expect(oAuthReceived).toBe(false);
-      expect(quickReceived).toBe(false);
-    });
-  });
-
   describe('quick-action route family', () => {
     QUICK_ACTION_URLS.forEach((url) => {
       it(`should deliver "${url}" to the quick-action consumer`, () => {
@@ -100,13 +72,6 @@ describe('routeCapacitorAppUrl', () => {
       expect(oAuthReceived).toBe(false);
       expect(taskReceived).toBe(false);
     });
-
-    it('should keep claiming create-task for the task family', () => {
-      // `add-task` and `create-task` are deliberately different actions; the
-      // task parser runs first, and this pins that order.
-      expect(route('com.super-productivity.app://create-task?title=hello')).toBe('task');
-      expect(route('com.super-productivity.app://add-task')).toBe('quick-action');
-    });
   });
 
   describe('OAuth route family', () => {
@@ -128,26 +93,6 @@ describe('routeCapacitorAppUrl', () => {
 
       expect(taskReceived).toBe(false);
     });
-  });
-
-  it('should serve every route family from the single listener', () => {
-    // The regression: one native listener has to feed every consumer, because
-    // a second listener would never see a cold-start URL at all.
-    let oAuthReceived: string | undefined;
-    oAuthSink.subscribe((u) => (oAuthReceived = u));
-
-    route('com.super-productivity.app://create-task?title=hello');
-    route('com.super-productivity.app://inbox');
-    route(OAUTH_URLS[0]);
-
-    let taskReceived: AppUriTaskAction | undefined;
-    taskSink.subscribe((a) => (taskReceived = a));
-    let quickReceived: AppUriQuickAction | undefined;
-    quickSink.subscribe((a) => (quickReceived = a));
-
-    expect(taskReceived?.title).toBe('hello');
-    expect(quickReceived).toEqual({ type: 'navigate', target: 'inbox' });
-    expect(oAuthReceived).toBe(OAUTH_URLS[0]);
   });
 
   it('should route an unrecognized URL to the OAuth consumer, which ignores it', () => {

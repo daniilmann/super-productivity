@@ -114,56 +114,6 @@ test('toggle-visibility delegates to the shared toggle helper without sending IP
   assert.deepEqual(win.sent, []);
 });
 
-test('create-task forwards the decoded title from the path segment and shows the window', () => {
-  const { processProtocolUrl } = loadModule();
-  const win = makeWin();
-
-  processProtocolUrl('superproductivity://create-task/Buy%20milk', win);
-
-  assert.deepEqual(win.sent, [
-    {
-      channel: 'ADD_TASK_FROM_APP_URI',
-      payload: { title: 'Buy milk', notes: undefined, projectId: undefined },
-    },
-  ]);
-  assert.equal(
-    showOrFocusCalls.length,
-    1,
-    'the success/error snack must actually be visible to the user',
-  );
-});
-
-test('create-task forwards title, notes, and projectId from query params', () => {
-  const { processProtocolUrl } = loadModule();
-  const win = makeWin();
-
-  processProtocolUrl(
-    'superproductivity://create-task?title=Buy%20milk&notes=2%25%20fat&projectId=proj-1',
-    win,
-  );
-
-  assert.deepEqual(win.sent, [
-    {
-      channel: 'ADD_TASK_FROM_APP_URI',
-      payload: { title: 'Buy milk', notes: '2% fat', projectId: 'proj-1' },
-    },
-  ]);
-});
-
-test('create-task action name is case-insensitive', () => {
-  const { processProtocolUrl } = loadModule();
-  const win = makeWin();
-
-  processProtocolUrl('superproductivity://Create-Task?title=Buy%20milk', win);
-
-  assert.deepEqual(win.sent, [
-    {
-      channel: 'ADD_TASK_FROM_APP_URI',
-      payload: { title: 'Buy milk', notes: undefined, projectId: undefined },
-    },
-  ]);
-});
-
 test('create-task with neither a path segment nor a title query param sends nothing', () => {
   const { processProtocolUrl } = loadModule();
   const win = makeWin();
@@ -173,38 +123,6 @@ test('create-task with neither a path segment nor a title query param sends noth
   assert.deepEqual(win.sent, []);
 });
 
-test('create-task with a present-but-empty title forwards it (renderer shows the error)', () => {
-  const { processProtocolUrl } = loadModule();
-  const win = makeWin();
-
-  // `?title=` is present but empty. It must reach the renderer (which surfaces
-  // the empty-title error snack), not be silently dropped like a missing param.
-  processProtocolUrl('superproductivity://create-task?title=', win);
-
-  assert.deepEqual(win.sent, [
-    {
-      channel: 'ADD_TASK_FROM_APP_URI',
-      payload: { title: '', notes: undefined, projectId: undefined },
-    },
-  ]);
-});
-
-test('complete-task forwards the title query param and shows the window', () => {
-  const { processProtocolUrl } = loadModule();
-  const win = makeWin();
-
-  processProtocolUrl('superproductivity://complete-task?title=Buy%20milk', win);
-
-  assert.deepEqual(win.sent, [
-    { channel: 'COMPLETE_TASK_FROM_APP_URI', payload: { title: 'Buy milk' } },
-  ]);
-  assert.equal(
-    showOrFocusCalls.length,
-    1,
-    'the success/error snack must actually be visible to the user',
-  );
-});
-
 test('complete-task without a title query param sends nothing', () => {
   const { processProtocolUrl } = loadModule();
   const win = makeWin();
@@ -212,59 +130,6 @@ test('complete-task without a title query param sends nothing', () => {
   processProtocolUrl('superproductivity://complete-task', win);
 
   assert.deepEqual(win.sent, []);
-});
-
-test('defers until the app is ready, then delivers the queued URL on drain', () => {
-  // A freshly created BrowserWindow has webContents before Angular boots and
-  // registers its IPC listeners; sending now would be dropped. The URL must be
-  // queued and then delivered once the app signals ready.
-  const { processProtocolUrl, processPendingProtocolUrls } = loadModule();
-  const win = makeWin();
-  isAppReady = false;
-
-  processProtocolUrl('superproductivity://create-task?title=Buy%20milk', win);
-
-  assert.deepEqual(win.sent, [], 'nothing is sent to a not-yet-listening renderer');
-  assert.equal(showOrFocusCalls.length, 0);
-  assert.ok(
-    JSON.stringify(logCalls).includes('deferring'),
-    'the URL should be logged as deferred',
-  );
-
-  // The APP_READY drain (start-app.ts) fires once the renderer has booted.
-  isAppReady = true;
-  processPendingProtocolUrls(win);
-
-  assert.deepEqual(
-    win.sent,
-    [
-      {
-        channel: 'ADD_TASK_FROM_APP_URI',
-        payload: { title: 'Buy milk', notes: undefined, projectId: undefined },
-      },
-    ],
-    'the queued URL is delivered once the app is ready',
-  );
-});
-
-test('does not log user content (the task title) to the exportable log', () => {
-  const { processProtocolUrl } = loadModule();
-  const win = makeWin();
-
-  processProtocolUrl('superproductivity://create-task/My%20Secret%20Title', win);
-
-  // The task itself is still dispatched with the real title...
-  assert.deepEqual(win.sent, [
-    {
-      channel: 'ADD_TASK_FROM_APP_URI',
-      payload: { title: 'My Secret Title', notes: undefined, projectId: undefined },
-    },
-  ]);
-  // ...but the title must never reach the (exportable) log.
-  assert.ok(
-    !JSON.stringify(logCalls).includes('Secret'),
-    'task title must not appear in any log line',
-  );
 });
 
 test('a malformed URL is caught and its content never reaches the log', () => {
