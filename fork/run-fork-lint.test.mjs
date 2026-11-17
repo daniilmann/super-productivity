@@ -91,6 +91,61 @@ for (const message of [
   });
 }
 
+void test('a rule error mentioning ignored is a lint error, not an ignored file', () => {
+  const message =
+    'Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.';
+  const errors = parseEslintReport(
+    report([
+      result(FILES[0], {
+        errorCount: 1,
+        messages: [
+          { ruleId: '@typescript-eslint/no-floating-promises', severity: 2, message },
+        ],
+      }),
+    ]),
+    [FILES[0]],
+    ROOT,
+  );
+  assert.ok(errors.includes(`ESLINT_ERRORS: ${FILES[0]}`));
+  assert.ok(!errors.includes(`ESLINT_IGNORED: ${FILES[0]}`));
+});
+
+for (const message of [
+  'File ignored because of a matching ignore pattern. Use "--no-ignore" to disable file ignore settings or use "--no-warn-ignored" to suppress this warning.',
+  'File ignored because no matching configuration was supplied.',
+]) {
+  void test(`an ESLint configuration warning reports an ignored file: ${message}`, () => {
+    const errors = parseEslintReport(
+      report([
+        result(FILES[0], {
+          warningCount: 1,
+          messages: [{ ruleId: null, severity: 1, message }],
+        }),
+      ]),
+      [FILES[0]],
+      ROOT,
+    );
+    assert.ok(errors.includes(`ESLINT_IGNORED: ${FILES[0]}`));
+  });
+}
+
+void test('a noInlineConfig warning mentioning ignored does not mean the file was ignored', () => {
+  const message =
+    "'/* eslint-disable no-console -- ignored directive */' has no effect because you have 'noInlineConfig' setting in your config.";
+  const errors = parseEslintReport(
+    report([
+      result(FILES[0], {
+        warningCount: 1,
+        messages: [{ ruleId: null, severity: 1, message }],
+      }),
+    ]),
+    [FILES[0]],
+    ROOT,
+  );
+  assert.ok(errors.includes(`ESLINT_WARNINGS: ${FILES[0]}`));
+  assert.ok(!errors.includes(`ESLINT_IGNORED: ${FILES[0]}`));
+});
+
 void test('fatal and parser errors are errors of coverage, even when the path is present', () => {
   const cases = [
     { fatalErrorCount: 1 },
