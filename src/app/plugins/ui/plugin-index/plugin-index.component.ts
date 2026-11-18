@@ -296,8 +296,8 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
     // other embed slots) don't get answered with this plugin's bound methods.
     const listener = async (event: Event): Promise<void> => {
       const msgEvent = event as MessageEvent;
-      const iframeWin = this._getPluginIframeWindow();
-      if (!iframeWin || msgEvent.source !== iframeWin) {
+      const iframe = this._getPluginIframe();
+      if (!iframe?.contentWindow || msgEvent.source !== iframe.contentWindow) {
         return;
       }
       if (
@@ -309,18 +309,19 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
       if (!this._pluginService.getPluginIndexHtml(config.pluginId)) {
         return;
       }
-      await handlePluginMessage(
-        msgEvent,
-        config,
-        () =>
-          !this._isDestroyed &&
-          this._messageListener === listener &&
-          this.pluginId() === pluginId &&
-          this._getPluginIframeWindow() === iframeWin &&
-          this._pluginService.getPluginIframeGeneration(pluginId) ===
-            config.bridgeGeneration &&
-          !!this._pluginService.getPluginIndexHtml(pluginId),
-      );
+      const iframeDocument = iframe.contentDocument;
+      const isCurrent = (): boolean =>
+        !this._isDestroyed &&
+        this._messageListener === listener &&
+        this.pluginId() === pluginId &&
+        this._getPluginIframe() === iframe &&
+        iframe.contentWindow === msgEvent.source &&
+        !!iframeDocument &&
+        iframe.contentDocument === iframeDocument &&
+        this._pluginService.getPluginIframeGeneration(pluginId) ===
+          config.bridgeGeneration &&
+        !!this._pluginService.getPluginIndexHtml(pluginId);
+      await handlePluginMessage(msgEvent, config, isCurrent);
     };
     this._messageListener = listener;
 
@@ -342,8 +343,6 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Resolve the live window of THIS component's plugin iframe.
-   *
    * Reads the rendered DOM rather than the cached `@ViewChild`: with zoneless
    * change detection the ViewChild property is only assigned on the next CD
    * pass (rAF/timeout), which can land AFTER the srcdoc iframe has executed its
@@ -355,11 +354,10 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
    * Still scoped to this component's host, so messages from sibling plugin
    * iframes (side panel vs. embed slot) are not answered with our bound methods.
    */
-  private _getPluginIframeWindow(): Window | null {
-    const iframeEl = this._elRef.nativeElement.querySelector<HTMLIFrameElement>(
+  private _getPluginIframe(): HTMLIFrameElement | null {
+    return this._elRef.nativeElement.querySelector<HTMLIFrameElement>(
       'iframe[data-plugin-iframe]',
     );
-    return iframeEl?.contentWindow ?? null;
   }
 
   private _cleanupIframeCommunication(): void {
@@ -392,7 +390,7 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
     PluginLog.log('Plugin iframe loaded for plugin:', this.pluginId());
 
     // Reading the cached @ViewChild is fine HERE (unlike the message listener,
-    // which uses _getPluginIframeWindow()): this fires on the iframe's `load`
+    // which uses _getPluginIframe()): this fires on the iframe's `load`
     // event, by which point the ViewChild is assigned, and registration is not
     // race-sensitive. Do not "unify" this with the listener's DOM lookup.
     if (this.iframeRef?.nativeElement && this.pluginId()) {

@@ -663,6 +663,7 @@ export const handlePluginMessage = async (
       }
 
       if (method === 'getSyncedDataSaveState') {
+        if (!isCurrent()) return;
         await config.boundMethods.getSyncedDataSaveState(args[0], (result) => {
           if (isCurrent()) {
             source?.postMessage(

@@ -179,19 +179,16 @@ export class PluginUserPersistenceService {
     const prev = this._commitChain.get(entityId) ?? Promise.resolve();
     // Swallow prior errors so the chain doesn't poison subsequent writes.
     // The original failed call has already seen and surfaced its own error.
-    const next: Promise<void> = prev
+    const next = prev
       .catch(() => undefined)
-      .then(() => this._encodeAndDispatch(entityId, data, myGeneration));
+      .then(() => this._encodeAndDispatch(entityId, data, myGeneration))
+      .finally(() => {
+        if (this._commitChain.get(entityId) === next) {
+          this._committing.delete(entityId);
+          this._commitChain.delete(entityId);
+        }
+      });
     this._commitChain.set(entityId, next);
-
-    next.finally(() => {
-      if (this._committing.get(entityId) === data) {
-        this._committing.delete(entityId);
-      }
-      if (this._commitChain.get(entityId) === next) {
-        this._commitChain.delete(entityId);
-      }
-    });
 
     return next;
   }
