@@ -4,6 +4,7 @@ import { WorkContextType } from '../../../../features/work-context/work-context.
 import { addNote } from '../../../../features/note/store/note.actions';
 import { Note } from '../../../../features/note/note.model';
 import { EMPTY_SIMPLE_COUNTER } from '../../../../features/simple-counter/simple-counter.const';
+import { ServerClock } from '../../../../plugins/save-confirmation/server-clock';
 import { TaskSharedActions } from '../../../../root-store/meta/task-shared.actions';
 import { VectorClock } from '../../../core/operation.types';
 import { OperationLogStoreService } from '../../../persistence/operation-log-store.service';
@@ -112,6 +113,25 @@ describe('SyncFuzzHarness: two devices on one injector', () => {
       comparable(await harness.syncedState(b)),
     );
     expect(harness.events).toEqual([]);
+  }, 60_000);
+
+  it('restores each device’s server clock correction', async () => {
+    const clock = TestBed.inject(ServerClock);
+    const correctionA = await harness.as(a, async () => {
+      clock.observe(Date.now() + 1200);
+      return clock.correction;
+    });
+    const correctionB = await harness.as(b, async () => {
+      expect(clock.correction).toBe(0);
+      clock.observe(Date.now() - 800);
+      return clock.correction;
+    });
+    expect(correctionA).toBeGreaterThan(0);
+    expect(correctionB).toBeLessThan(0);
+    await harness.as(a, async () => expect(clock.correction).toBe(correctionA));
+    await harness.as(b, async () => expect(clock.correction).toBe(correctionB));
+    const c = await harness.addDevice('C');
+    await harness.as(c, async () => expect(clock.correction).toBe(0));
   }, 60_000);
 
   it('tells two devices apart when one has not synced', async () => {

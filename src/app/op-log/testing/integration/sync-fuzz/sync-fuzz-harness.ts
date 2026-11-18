@@ -66,6 +66,7 @@ import {
 import { timeTrackingFeature } from '../../../../features/time-tracking/store/time-tracking.reducer';
 import { WORK_CONTEXT_FEATURE_NAME } from '../../../../features/work-context/store/work-context.selectors';
 import { workContextReducer } from '../../../../features/work-context/store/work-context.reducer';
+import { ServerClock } from '../../../../plugins/save-confirmation/server-clock';
 import {
   PLUGIN_METADATA_FEATURE_NAME,
   pluginMetadataReducer,
@@ -245,6 +246,7 @@ const DEVICE_FIELDS: ReadonlyArray<readonly [ProviderToken<object>, readonly str
       ['_hasWarnedVersionBlockThisSession', '_hasWarnedMigrationFailureThisSession'],
     ],
     [ServerMigrationService, ['_validationFailureNotified']],
+    [ServerClock, ['_correction']],
   ];
 
 const ROUTED =
