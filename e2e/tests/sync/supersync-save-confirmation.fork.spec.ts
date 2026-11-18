@@ -1,10 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { Locator, Request } from '@playwright/test';
 import type { PluginAPI } from '../../../packages/plugin-api/src/types';
-import type {
-  OpUploadResponse,
-  SyncOperation,
-} from '../../../packages/sync-providers/src/provider-types';
+import { SuperSyncUploadOpsResponseSchema } from '../../../packages/shared-schema/src/supersync-http-contract';
+import type { SyncOperation } from '../../../packages/sync-providers/src/provider-types';
 import { test, expect } from '../../fixtures/supersync.fixture';
 import {
   enablePluginWithVerification,
@@ -116,7 +114,7 @@ const syncAndVerifyReceipt = async (
   const matching = matchingOps(response.request());
   expect(matching).toHaveLength(1);
   const opId = matching[0].id;
-  const upload: OpUploadResponse = await response.json();
+  const upload = SuperSyncUploadOpsResponseSchema.parse(await response.json());
   expect(upload.results).toContainEqual(
     expect.objectContaining({ opId, accepted: true, serverSeq: expect.any(Number) }),
   );
