@@ -99,10 +99,13 @@ The fast gate also requires `packages/shared-schema`, `packages/sync-core`, and 
 - `fork-gate.yml` — Fast gate on every push and manual run. A manual run from a branch with
   `build: true` and a valid `tag` input builds artifacts with a debug-signed APK. A manual run
   from a tag takes the full route and rejects `build: true`.
-- Only an admitted tag push can sign the release APK and publish. Builds use the checked
-  commit. Publication checks the raw remote tag object before creating the draft and
-  again before making it public, after comparing the four exact asset names and sizes.
-  An existing Release for the tag fails the run.
+- Signing and publication require a new tag push whose payload matches the raw tag object.
+  Builds use the checked commit. The APK checks and artifact upload use the same selected
+  file, and the publisher verifies its SHA-256 after downloading it.
+- Publication requires a successful Release listing with no entry for the tag, including
+  drafts. It checks the raw remote tag object before creating the draft, verifies the four
+  exact asset names and sizes on that draft, and checks the tag again before publishing by
+  the draft's ID.
 - `LICENSE` ships in every artifact without changing upstream files: in the DMG app as
   `Contents/Resources/LICENSE` (`extraResources` in the overlay), in the APK as `assets/public/LICENSE`
   (copied into the web build before Capacitor sync), and in the web build zip. The build checks each copy.

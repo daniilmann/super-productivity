@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { parseTag, versionCode } from './apply-identity.mjs';
 
 const OID = /^[0-9a-f]{40}$/;
+const ZERO_OID = '0'.repeat(40);
 const TAG_PREFIX = 'refs/tags/';
 const CHECKED_TAG = 'refs/release-check/tag';
 const PREVIOUS_TAG = 'refs/release-check/previous';
@@ -42,9 +43,13 @@ function fetchTag(root, tag, destination) {
 
 /**
  * @param {string} root
- * @param {{event: string, ref: string, sha: string, after?: string, build?: boolean}} run
+ * @param {{event: string, ref: string, sha: string, after?: string, before?: string,
+ *          created?: string, deleted?: string, forced?: string, build?: boolean}} run
  */
-export function inspectTag(root, { event, ref, sha, after, build }) {
+export function inspectTag(
+  root,
+  { event, ref, sha, after, before, created, deleted, forced, build },
+) {
   if (event !== 'push' && event !== 'workflow_dispatch')
     throw new Error('unsupported tag event');
   if (event === 'workflow_dispatch' && build)
@@ -53,14 +58,21 @@ export function inspectTag(root, { event, ref, sha, after, build }) {
     throw new Error('expected a tag ref and a full event SHA');
   const tag = ref.slice(TAG_PREFIX.length);
   tagCode(tag);
+  if (
+    event === 'push' &&
+    (created !== 'true' ||
+      before !== ZERO_OID ||
+      deleted !== 'false' ||
+      forced !== 'false')
+  )
+    throw new Error('tag push must create a new tag');
   fetchTag(root, tag, CHECKED_TAG);
   const oid = git(root, 'rev-parse', CHECKED_TAG).trim();
+  if (event === 'push' && after !== oid)
+    throw new Error('tag object differs from the push payload');
   const commit = git(root, 'rev-parse', `${CHECKED_TAG}^{commit}`).trim();
   if (commit !== sha || commit !== git(root, 'rev-parse', 'HEAD').trim())
     throw new Error('tag target differs from the event commit or checkout');
-  // The push payload can identify the ref object or its commit. Check either form.
-  if (event === 'push' && after !== oid && after !== commit)
-    throw new Error('tag differs from the push payload');
 
   const type = git(root, 'cat-file', '-t', oid).trim();
   let mode = 'full';
@@ -215,6 +227,10 @@ function main([command, arg, oid], env) {
       ref: env.GITHUB_REF ?? '',
       sha: env.GITHUB_SHA ?? '',
       after: env.PUSH_AFTER,
+      before: env.PUSH_BEFORE,
+      created: env.PUSH_CREATED,
+      deleted: env.PUSH_DELETED,
+      forced: env.PUSH_FORCED,
       build: env.BUILD_REQUESTED === 'true',
     });
     let notes = '';

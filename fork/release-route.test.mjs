@@ -82,7 +82,16 @@ function annotate(remote, target, body, { type = 'commit', name = TAG, ref = REF
 }
 
 /** @param {string} sha @param {string} after */
-const push = (sha, after) => ({ event: 'push', ref: REF, sha, after });
+const push = (sha, after) => ({
+  event: 'push',
+  ref: REF,
+  sha,
+  after,
+  before: '0'.repeat(40),
+  created: 'true',
+  deleted: 'false',
+  forced: 'false',
+});
 
 void test('the documented Git command creates the exact fast annotation', (t) => {
   const { remote, checkout, sha } = repository(t);
@@ -206,8 +215,7 @@ void test('rejects an annotated tag pointing at a tag, even if the commit matche
 void test('pins the raw OID and rejects replacement at the same commit and deletion', (t) => {
   const { remote, checkout, sha } = repository(t);
   const original = annotate(remote, sha, FAST);
-  // A push SHA can identify the peeled commit; the saved OID must still be raw.
-  const route = inspectTag(checkout, push(sha, sha));
+  const route = inspectTag(checkout, push(sha, original));
   assert.equal(route.oid, original);
   verifyTag(checkout, TAG, route.oid);
   annotate(remote, sha, 'replacement\n');
@@ -223,6 +231,37 @@ void test('pins the raw OID and rejects replacement at the same commit and delet
     verifyTag(checkout, TAG, route.oid);
   }, /ls-remote/);
   assert.throws(() => inspectTag(checkout, push(sha, original)), /fetch/);
+});
+
+void test('rejects a different annotated object before the first fetch', (t) => {
+  const { remote, checkout, sha } = repository(t);
+  const original = annotate(remote, sha, 'original\n');
+  const replacement = annotate(remote, sha, FAST);
+  assert.notEqual(replacement, original);
+  for (const after of [original, sha])
+    assert.throws(
+      () => inspectTag(checkout, push(sha, after)),
+      /differs from the push payload/,
+    );
+});
+
+void test('requires all creation fields even when the new tag object matches', (t) => {
+  const { remote, checkout, sha } = repository(t);
+  const original = annotate(remote, sha, 'original\n');
+  const replacement = annotate(remote, sha, FAST);
+  const run = push(sha, replacement);
+  for (const fields of [
+    { before: original, created: 'false', forced: 'true' },
+    { before: original },
+    { created: undefined },
+    { created: 'false' },
+    { deleted: 'true' },
+    { forced: 'true' },
+  ])
+    assert.throws(
+      () => inspectTag(checkout, { ...run, ...fields }),
+      /must create a new tag/,
+    );
 });
 
 void test('selects the preceding published release by numeric version, not Git tag or API order', (t) => {
@@ -373,8 +412,22 @@ void test('the workflow admits signing and publication only through a checked pu
   assert.match(publish, releaseOnly);
   const verify = 'verify-tag "$TAG" "$TAG_OID"';
   assert.equal(publish.split(verify).length - 1, 2);
-  assert.match(publish, /verify-tag .*\n\s+gh release create/);
-  assert.match(publish, /verify-tag .*\n\s+gh release edit/);
+  assert.match(publish, /verify-tag .*\n\s+draft="\$\(gh api --method POST/);
+  assert.match(publish, /verify-tag .*\n\s+gh api --method PATCH "\$releases\/\$id"/);
   for (const name of ['build-mac', 'build-apk', 'assets', 'publish'])
     assert.match(job(name), /ref: \$\{\{ needs\.version\.outputs\.sha \}\}/);
+});
+
+void test('a failed Release list stops the publisher before any write', () => {
+  const run = job('publish').split('        run: |\n').at(-1);
+  assert.ok(run);
+  const result = spawnSync(
+    'bash',
+    ['-c', `gh() { [ "$2" = --paginate ] && return 23; return 24; }\n${run}`],
+    {
+      env: { PATH: process.env.PATH, GITHUB_REPOSITORY: 'example/fork', TAG },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 23, result.stderr);
 });

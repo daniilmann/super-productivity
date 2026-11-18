@@ -143,6 +143,10 @@ jobs:
       - id: route
         env:
           PUSH_AFTER: ${{ github.event.after }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_CREATED: ${{ github.event.created }}
+          PUSH_DELETED: ${{ github.event.deleted }}
+          PUSH_FORCED: ${{ github.event.forced }}
           BUILD_REQUESTED: ${{ inputs.build }}
           GH_TOKEN: ${{ github.token }}
         run: node fork/release-route.mjs inspect-tag
@@ -379,6 +383,8 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      sha256: ${{ steps.apk.outputs.sha256 }}
     # Release signing secrets exist only in the `release` environment, which admits fork tags only.
     environment: >-
       ${{ github.event_name == 'push' && github.ref_type == 'tag' &&
@@ -434,12 +440,38 @@ jobs:
       - name: Remove keystore
         if: always()
         run: rm -f keystore.jks
+      - name: Select APK for checks and upload
+        id: apk
+        env:
+          RELEASE: ${{ needs.version.outputs.release }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE" in
+            true) variant=release ;;
+            false) variant=debug ;;
+            *) echo "::error::unknown APK build variant"; exit 1 ;;
+          esac
+          mkdir checked-apk
+          find "android/app/build/outputs/apk/fdroid/$variant" -name "*-$variant.apk" -print0 > checked-apk/candidates
+          apks=()
+          while IFS= read -r -d '' candidate; do
+            apks+=("$candidate")
+          done < checked-apk/candidates
+          rm checked-apk/candidates
+          [ "${#apks[@]}" -eq 1 ] || { echo "::error::expected exactly one $variant APK"; exit 1; }
+          [ -f "${apks[0]}" ] && [ -s "${apks[0]}" ] && [ ! -L "${apks[0]}" ] \
+            || { echo "::error::expected a regular, nonempty $variant APK"; exit 1; }
+          apk="checked-apk/app-fdroid-$variant.apk"
+          cp "${apks[0]}" "$apk"
+          digest="$(sha256sum < "$apk")"
+          printf 'CHECKED_APK=%s\n' "$apk" >> "$GITHUB_ENV"
+          printf 'sha256=%s\n' "${digest%% *}" >> "$GITHUB_OUTPUT"
       - name: Check APK manifest and shortcuts
         env:
           TAG: ${{ needs.version.outputs.tag }}
         run: |
           set -euo pipefail
-          apk="$(find android/app/build/outputs/apk/fdroid -name '*.apk' | head -1)"
+          apk="$CHECKED_APK"
           echo "apk: $apk"
           aapt2="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
           "$aapt2" dump badging "$apk" > badging-full.txt
@@ -464,13 +496,13 @@ jobs:
       - name: LICENSE in the APK
         run: |
           set -euo pipefail
-          apk="$(find android/app/build/outputs/apk/fdroid -name '*.apk' | head -1)"
+          apk="$CHECKED_APK"
           unzip -p "$apk" assets/public/LICENSE | cmp - LICENSE || { echo "::error::assets/public/LICENSE missing or different"; exit 1; }
           echo "LICENSE ok in the APK"
       - name: APK backup rules exclude all app data
         run: |
           set -euo pipefail
-          apk="$(find android/app/build/outputs/apk/fdroid -name '*.apk' | head -1)"
+          apk="$CHECKED_APK"
           aapt2="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
           "$aapt2" dump xmltree --file AndroidManifest.xml "$apk" > manifest.txt
           "$aapt2" dump resources "$apk" > resources.txt
@@ -487,7 +519,7 @@ jobs:
           RELEASE_CERT_SHA256: 892a3b2ac3ee136ba2650132ddf3bcbcca6a00e2f68d4e3ee4d44006bba25a77
         run: |
           set -euo pipefail
-          apk="$(find android/app/build/outputs/apk/fdroid -name '*.apk' | head -1)"
+          apk="$CHECKED_APK"
           apksigner="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
           "$apksigner" verify --print-certs "$apk" > certs.txt
           grep -E 'SHA-256|DN' certs.txt
@@ -503,7 +535,8 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-apk
-          path: android/app/build/outputs/apk/fdroid/**/*.apk
+          path: ${{ env.CHECKED_APK }}
+          if-no-files-found: error
           retention-days: 14
 
   assets:
@@ -570,14 +603,15 @@ jobs:
       - name: Assemble the asset set
         env:
           TAG: ${{ needs.version.outputs.tag }}
+          APK_SHA256: ${{ needs.build-apk.outputs.sha256 }}
         run: |
           set -euo pipefail
           mkdir out
           cp downloaded/mac-dmg/superProductivityTelos-arm64.dmg out/
-          shopt -s globstar nullglob
-          apks=(downloaded/android-apk/**/*-release.apk)
-          [ "${#apks[@]}" -eq 1 ] || { echo "::error::expected exactly one release APK"; exit 1; }
-          cp "${apks[0]}" out/superProductivityTelos-fdroid.apk
+          apk=downloaded/android-apk/app-fdroid-release.apk
+          digest="$(sha256sum < "$apk")"
+          [ "${digest%% *}" = "$APK_SHA256" ] || { echo "::error::release APK differs from the checked APK"; exit 1; }
+          cp "$apk" out/superProductivityTelos-fdroid.apk
           cp "downloaded/release-assets/super-productivity-plugin-api-${TAG#v}.tgz" \
              downloaded/release-assets/superProductivityTelos-web.zip out/
           ls -la out
@@ -589,8 +623,11 @@ jobs:
           RELEASE_NOTES: ${{ needs.version.outputs.notes }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::error::a Release for $TAG already exists; nothing is overwritten (use a new N)"; exit 1
+          releases="repos/$GITHUB_REPOSITORY/releases"
+          # With contents: write, the paginated list includes draft Releases.
+          tags="$(gh api --paginate "$releases?per_page=100" --jq '.[].tag_name')"
+          if grep -Fxq -- "$TAG" <<< "$tags"; then
+            echo "::error::a Release for $TAG already exists (use a new N)"; exit 1
           fi
           set -- out/superProductivityTelos-arm64.dmg out/superProductivityTelos-fdroid.apk \
             "out/super-productivity-plugin-api-${TAG#v}.tgz" out/superProductivityTelos-web.zip
@@ -600,10 +637,19 @@ jobs:
             printf '%s %s\n' "${asset#out/}" "$size"
           done | sort > expected.txt
           node fork/release-route.mjs verify-tag "$TAG" "$TAG_OID"
-          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --verify-tag --title "$TAG" --notes "$RELEASE_NOTES" "$@"
-          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets,isDraft \
-            -q '. | select(.isDraft) | .assets[] | "\(.name) \(.size)"' | sort > uploaded.txt
+          draft="$(gh api --method POST "$releases" -f tag_name="$TAG" -f name="$TAG" -f body="$RELEASE_NOTES" -F draft=true)"
+          id="$(jq -er --arg tag "$TAG" 'select(.draft == true and .tag_name == $tag) | .id' <<< "$draft")"
+          [[ "$id" =~ ^[1-9][0-9]*$ ]] || { echo "::error::invalid draft Release ID"; exit 1; }
+          upload="https://uploads.github.com/$releases/$id/assets"
+          for asset in "$@"; do
+            curl --fail --silent --show-error -o /dev/null \
+              -H "Authorization: Bearer $GH_TOKEN" -H 'Content-Type: application/octet-stream' \
+              --data-binary "@$asset" "$upload?name=${asset#out/}"
+          done
+          gh api "$releases/$id" | jq -er --arg id "$id" --arg tag "$TAG" '
+            select((.id | tostring) == $id and .draft == true and .tag_name == $tag)
+            | .assets[] | "\(.name) \(.size)"' | sort > uploaded.txt
           diff expected.txt uploaded.txt || { echo "::error::uploaded assets differ from the built set; the draft is left for inspection"; exit 1; }
           node fork/release-route.mjs verify-tag "$TAG" "$TAG_OID"
-          gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false
+          gh api --method PATCH "$releases/$id" -F draft=false --silent
           echo "published $TAG"
