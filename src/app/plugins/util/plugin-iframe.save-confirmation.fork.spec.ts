@@ -25,6 +25,7 @@ import {
   expectReply,
   manifest,
   mountPlugin,
+  replaceIframeDocument,
   rpc,
   saved,
 } from './testing/plugin-iframe-save-confirmation.fixtures.fork.spec';
@@ -272,6 +273,7 @@ describe('iframe save confirmation', () => {
   }
 
   for (const invalidation of [
+    'navigate iframe in the same window',
     'switch plugin in the same window',
     'close iframe',
     'change generation',
@@ -280,7 +282,8 @@ describe('iframe save confirmation', () => {
       it(`drops the old ${outcome} when the view can ${invalidation}`, async () => {
         await fixture.acknowledge(CALLER, KEY);
         const view = await mount();
-        const post = spyOn(view.source, 'postMessage');
+        const navigates = invalidation === 'navigate iframe in the same window';
+        let post = navigates ? undefined : spyOn(view.source, 'postMessage');
         const beforeSecond = deferred();
         const resume = deferred();
         const request = fixture.lock.request.bind(fixture.lock);
@@ -309,7 +312,18 @@ describe('iframe save confirmation', () => {
               pending.then(() => false),
             ]),
           ).toBeTrue();
-          if (invalidation === 'switch plugin in the same window') {
+          if (navigates) {
+            const frame = view.findFrame();
+            if (!frame) {
+              throw new Error('Plugin iframe is missing before navigation');
+            }
+            const original = frame.contentDocument;
+            await replaceIframeDocument(frame);
+            expect(view.findFrame()).toBe(frame);
+            expect(frame.contentWindow).toBe(view.source);
+            expect(frame.contentDocument).not.toBe(original);
+            post = spyOn(view.source, 'postMessage');
+          } else if (invalidation === 'switch plugin in the same window') {
             view.component['_cleanupIframeCommunication']();
             view.component.pluginId.set(OTHER);
             await view.component['_loadPluginIndex'](OTHER);
@@ -329,7 +343,7 @@ describe('iframe save confirmation', () => {
             await blocking;
           }
         }
-        expect(post).not.toHaveBeenCalled();
+        expect(post?.calls.allArgs()).toEqual([]);
       });
     }
   }

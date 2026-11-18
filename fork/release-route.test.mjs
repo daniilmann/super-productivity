@@ -14,6 +14,7 @@ import {
 
 const TAG = 'v21.0.0-fork.11';
 const REF = `refs/tags/${TAG}`;
+const FIRST_API_TAG = 'v20.0.0-fork.5';
 const FAST = 'Release-Mode: fast\n';
 const gitEnv = Object.fromEntries(
   Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_')),
@@ -80,10 +81,10 @@ function annotate(remote, target, body, { type = 'commit', name = TAG, ref = REF
   return oid;
 }
 
-/** @param {string} sha @param {string} after */
-const push = (sha, after) => ({
+/** @param {string} sha @param {string} after @param {string} [ref] */
+const push = (sha, after, ref = REF) => ({
   event: 'push',
-  ref: REF,
+  ref,
   sha,
   after,
   before: '0'.repeat(40),
@@ -100,7 +101,7 @@ void test('the documented Git command creates the exact fast annotation', (t) =>
   assert.equal(inspectTag(checkout, push(sha, oid)).mode, 'fast');
 });
 
-for (const [label, annotation, mode] of [
+for (const [label, annotation, mode, tag = TAG] of [
   ['exact line', FAST, 'fast'],
   ['empty annotation', '', 'full'],
   ['different case', 'release-mode: fast\n', 'full'],
@@ -110,23 +111,31 @@ for (const [label, annotation, mode] of [
   ['trailing space', 'Release-Mode: fast \n', 'full'],
   ['CRLF', 'Release-Mode: fast\r\n', 'full'],
   ['no final LF', FAST.trimEnd(), 'full'],
+  ['fast marker on the first save API tag', FAST, 'full', FIRST_API_TAG],
 ]) {
   void test(`annotated tag with ${label} takes the ${mode} route`, (t) => {
     const { remote, checkout, sha } = repository(t);
-    const oid = annotate(remote, sha, annotation);
-    assert.deepEqual(inspectTag(checkout, push(sha, oid)), { tag: TAG, sha, oid, mode });
+    const ref = `refs/tags/${tag}`;
+    const oid = annotate(remote, sha, annotation, { name: tag, ref });
+    const firstFast = tag === FIRST_API_TAG && annotation === FAST;
+    let route;
+    try {
+      route = inspectTag(checkout, push(sha, oid, ref));
+    } catch (error) {
+      // A deliberate refusal of the first fast marker also protects the full gate.
+      if (firstFast && error instanceof Error && !('status' in error)) return;
+      throw error;
+    }
+    assert.deepEqual(route, { tag, sha, oid, mode });
   });
 }
 
-void test('lightweight push takes the full route', (t) => {
+void test('the first save API tag takes the full route on a lightweight push', (t) => {
   const { remote, checkout, sha } = repository(t);
-  git(remote, ['update-ref', REF, sha]);
-  assert.deepEqual(inspectTag(checkout, push(sha, sha)), {
-    tag: TAG,
-    sha,
-    oid: sha,
-    mode: 'full',
-  });
+  const ref = `refs/tags/${FIRST_API_TAG}`;
+  git(remote, ['update-ref', ref, sha]);
+  const route = inspectTag(checkout, push(sha, sha, ref));
+  assert.deepEqual(route, { tag: FIRST_API_TAG, sha, oid: sha, mode: 'full' });
 });
 
 void test('dispatch of a fast tag takes the full route and cannot request a build', (t) => {
@@ -242,13 +251,11 @@ void test('selects the preceding published release by numeric version, not Git t
   git(remote, ['update-ref', `refs/tags/${previous}`, base]);
   git(remote, ['update-ref', 'refs/tags/v21.0.0-fork.9', 'HEAD']);
   const published = ['v21.0.0-fork.9', TAG, 'v21.0.0-fork.12', previous, 'other-release'];
-  assert.deepEqual(
-    superSyncStatus(checkout, TAG, sha, () => published),
-    {
-      required: false,
-      reason: `${previous} (${base}) vs ${sha}: pin and sync client unchanged`,
-    },
-  );
+  const status = superSyncStatus(checkout, TAG, sha, () => published);
+  assert.deepEqual(status, {
+    required: false,
+    reason: `${previous} (${base}) vs ${sha}: pin and sync client unchanged`,
+  });
 });
 
 for (const path of [
@@ -270,15 +277,11 @@ void test('includes SuperSync when the preceding release or comparison is uncert
   const { remote, checkout, sha, base } = repository(t);
   const previous = 'v21.0.0-fork.10';
   assert.match(superSyncStatus(checkout, TAG, sha, () => []).reason, /no unambiguous/);
-  assert.match(
-    superSyncStatus(checkout, TAG, sha, () => [previous]).reason,
-    /could not fetch/,
-  );
+  const missing = superSyncStatus(checkout, TAG, sha, () => [previous]);
+  assert.match(missing.reason, /could not fetch/);
   git(remote, ['update-ref', `refs/tags/${previous}`, sha]);
-  assert.equal(
-    superSyncStatus(checkout, TAG, sha, () => [previous, previous]).required,
-    true,
-  );
+  const ambiguous = superSyncStatus(checkout, TAG, sha, () => [previous, previous]);
+  assert.equal(ambiguous.required, true);
   assert.equal(superSyncStatus(checkout, TAG, base, () => [previous]).required, true);
   assert.equal(
     superSyncStatus(checkout, TAG, sha, () => {
@@ -348,17 +351,13 @@ function checkRequiredResults(name) {
   for (const status of ['skipped', 'failure', 'cancelled', '', 'success']) {
     for (const [index, dependency] of dependencies.entries()) {
       const results = [...success];
-      if (status) results[index] = status;
-      else results.splice(index, 1);
+      results.splice(index, 1, ...[status].filter(Boolean));
       const probe = spawnSync('bash', ['-e', '-c', run], {
         env: { ...process.env, RESULTS: results.join(' ') },
       });
       assert.ifError(probe.error);
-      assert.equal(
-        probe.status,
-        Number(status !== 'success'),
-        [name, dependency, status || 'absent'].join(' '),
-      );
+      const label = `${name} ${dependency} ${status || 'absent'}`;
+      assert.equal(probe.status, Number(status !== 'success'), label);
     }
   }
   assert.match(gate, /RESULTS: \$\{\{ join\(needs\.\*\.result, ' '\) \}\}/);
@@ -366,18 +365,19 @@ function checkRequiredResults(name) {
 
 void test('ordinary tag requires every applicable full job', () => {
   const dependencies = needs('full-gate');
+  assert.match(job('save-confirmation'), /ref: \$\{\{ github\.sha \}\}/);
   const jobs = dependencies.map(job);
   for (const command of [
     /run: npm run e2e:supersync:file\b[^\n]*\bsupersync-save-confirmation\.fork\.spec\.ts\b/,
     /run: npm run e2e(?:\s|:file\b|$)/m,
     /android\/run-android-checks\.sh/,
     /android\/run-android-ime-check\.sh/,
-  ])
-    assert.ok(
-      jobs.some((body) => command.test(body)),
-      String(command),
-    );
-  for (const name of ['gate', 'tag-route']) assert.ok(dependencies.includes(name), name);
+  ]) {
+    const runsCommand = jobs.some((body) => command.test(body));
+    assert.ok(runsCommand, String(command));
+  }
+  for (const name of ['gate', 'tag-route', 'save-confirmation'])
+    assert.ok(dependencies.includes(name), name);
   const upstreamUnit =
     /run: npm run test:ci\n\s+if: needs\.tag-route\.outputs\.mode != 'fast'/;
   assert.match(job('unit'), upstreamUnit);

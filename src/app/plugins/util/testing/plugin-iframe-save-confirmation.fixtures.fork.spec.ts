@@ -294,24 +294,34 @@ export const saved = {
   valueSha256: '63b0965eef2c6c4171608d53d23d317c3e4b27678dafc6dee804abe614a8843d',
 };
 
-const isSrcdocReady = (frame: HTMLIFrameElement): boolean => {
+const isSrcdocReady = (frame: HTMLIFrameElement, previous?: Document): boolean => {
   const doc = frame.contentDocument;
-  return doc?.URL === 'about:srcdoc' && doc.readyState === 'complete';
+  return doc !== previous && doc?.URL === 'about:srcdoc' && doc.readyState === 'complete';
 };
 
-const waitForSrcdoc = (frame: HTMLIFrameElement): Promise<void> => {
-  if (isSrcdocReady(frame)) {
+const waitForSrcdoc = (frame: HTMLIFrameElement, previous?: Document): Promise<void> => {
+  if (isSrcdocReady(frame, previous)) {
     return Promise.resolve();
   }
   return new Promise<void>((resolve) => {
     const onLoad = (): void => {
-      if (isSrcdocReady(frame)) {
+      if (isSrcdocReady(frame, previous)) {
         frame.removeEventListener('load', onLoad);
         resolve();
       }
     };
     frame.addEventListener('load', onLoad);
   });
+};
+
+export const replaceIframeDocument = async (frame: HTMLIFrameElement): Promise<void> => {
+  const original = frame.contentDocument;
+  if (!original) {
+    throw new Error('Cannot replace the iframe document before it loads');
+  }
+  const loaded = waitForSrcdoc(frame, original);
+  frame.srcdoc = '<!doctype html><title>Replacement document</title>';
+  await loaded;
 };
 
 interface MountedPlugin {

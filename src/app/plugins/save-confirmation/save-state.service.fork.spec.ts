@@ -26,7 +26,7 @@ import {
   downloadTime,
   encoded,
   gzip,
-  holdCompressionWrite,
+  readDuringIdenticalWrites,
   replaceStateFromOtherTab,
 } from './testing/save-state.fixtures.fork.spec';
 
@@ -85,7 +85,7 @@ describe('SaveStateService', () => {
     expect((await current().read()).keys[KEY]).toEqual(saved);
   });
 
-  it('reports coalescing and compression as pending', async () => {
+  it('reports pending during coalescing and until both identical writes finish compressing', async () => {
     current().setApplied(B);
     await current().acknowledge(B);
     const persistence = TestBed.inject(PluginUserPersistenceService);
@@ -96,18 +96,15 @@ describe('SaveStateService', () => {
     const coalesced = await current().read();
     await persistence.clearAllPluginUserData();
 
-    current().setApplied(B);
-    now.and.returnValue(4_000);
-    const { writing, release } = holdCompressionWrite();
-    const write = persistence.persistPluginUserData(ENTITY, 'x'.repeat(2048));
-    await writing;
-    try {
-      expect(coalesced.keys[KEY]).toEqual({ state: 'pending' });
-      expect((await current().read()).keys[KEY]).toEqual({ state: 'pending' });
-    } finally {
-      release();
-      await write;
-    }
+    const { duringFirst, duringSecond } = await readDuringIdenticalWrites(current(), now);
+    expect(coalesced.keys[KEY]).toEqual({ state: 'pending' });
+    expect(duringFirst).toEqual({ state: 'pending' });
+    expect(duringSecond).toEqual({ state: 'pending' });
+    expect((await current().read()).keys[KEY]).toEqual({
+      state: 'saved',
+      savedAt: jasmine.any(Number),
+      valueSha256: SHA_A,
+    });
   });
 
   it('reports journal failure ahead of a pending write and a matching receipt', async () => {

@@ -27,9 +27,13 @@ import { IS_ONLINE$ } from '../../../util/is-online.token';
 import { uuidv7 } from '../../../util/uuid-v7';
 import {
   MAX_PLUGIN_DATA_SIZE,
+  MIN_PLUGIN_PERSIST_INTERVAL_MS,
   PluginUserDataState,
 } from '../../plugin-persistence.model';
+import { PluginUserPersistenceService } from '../../plugin-user-persistence.service';
+import { upsertPluginUserData } from '../../store/plugin.actions';
 import { selectPluginUserDataFeatureState } from '../../store/plugin-user-data.reducer';
+import { encodeForPersist } from '../../util/plugin-data-codec';
 import { composeId } from '../../util/plugin-persistence-key.util';
 import { SaveStateService } from '../save-state.service';
 
@@ -210,25 +214,85 @@ export const replaceStateFromOtherTab = async (
   }
 };
 
-export const holdCompressionWrite = (): {
-  writing: Promise<void>;
+interface CompressionWriteBarrier {
+  waitForStart: (write: Promise<void>) => Promise<void>;
   release: () => void;
-} => {
+}
+
+const holdCompressionWrites = (): (() => CompressionWriteBarrier) => {
   const originalWrite = Reflect.get(WritableStreamDefaultWriter.prototype, 'write');
-  let start!: () => void;
-  const writing = new Promise<void>((resolve) => {
-    start = resolve;
-  });
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const barriers: (() => Promise<void>)[] = [];
   spyOn(WritableStreamDefaultWriter.prototype, 'write').and.callFake(function (
     this: WritableStreamDefaultWriter,
     chunk: unknown,
   ) {
-    start();
-    return held.then(() => originalWrite.call(this, chunk));
+    const barrier = barriers.shift();
+    return barrier
+      ? barrier().then(() => originalWrite.call(this, chunk))
+      : originalWrite.call(this, chunk);
   });
-  return { writing, release };
+  return () => {
+    let start!: () => void;
+    const writing = new Promise<void>((resolve) => {
+      start = resolve;
+    });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    barriers.push(() => {
+      start();
+      return held;
+    });
+    return {
+      waitForStart: (write) =>
+        Promise.race([
+          writing,
+          write.then(() => {
+            throw new Error(
+              'Persistence finished without reaching the compression barrier',
+            );
+          }),
+        ]),
+      release,
+    };
+  };
+};
+
+type KeyState = Awaited<ReturnType<SaveStateFixture['read']>>['keys'][string];
+
+export const readDuringIdenticalWrites = async (
+  fixture: SaveStateFixture,
+  now: jasmine.Spy<() => number>,
+): Promise<{ duringFirst: KeyState; duringSecond: KeyState }> => {
+  const persistence = TestBed.inject(PluginUserPersistenceService);
+  const data = await encodeForPersist(A);
+  const upsert = upsertPluginUserData({ pluginUserData: { id: ENTITY, data } });
+  const dispatch = spyOn(fixture.store, 'dispatch').and.callThrough();
+  fixture.setApplied(data);
+  await fixture.acknowledge(data);
+
+  const holdNextWrite = holdCompressionWrites();
+  const first = holdNextWrite();
+  const second = holdNextWrite();
+  const startedAt = 4_000;
+  now.and.returnValue(startedAt);
+  const firstWrite = persistence.persistPluginUserData(ENTITY, A);
+  let secondWrite: Promise<void> | undefined;
+  try {
+    await first.waitForStart(firstWrite);
+    const duringFirst = (await fixture.read()).keys[KEY];
+    now.and.returnValue(startedAt + MIN_PLUGIN_PERSIST_INTERVAL_MS + 1);
+    secondWrite = persistence.persistPluginUserData(ENTITY, A);
+    first.release();
+    await firstWrite;
+    await second.waitForStart(secondWrite);
+    expect(dispatch).toHaveBeenCalledOnceWith(upsert);
+    return { duringFirst, duringSecond: (await fixture.read()).keys[KEY] };
+  } finally {
+    first.release();
+    second.release();
+    await firstWrite;
+    await secondWrite;
+  }
 };
