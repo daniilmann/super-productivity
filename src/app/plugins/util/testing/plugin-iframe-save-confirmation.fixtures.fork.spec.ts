@@ -91,6 +91,7 @@ export const event = (
   keys: unknown,
   bridgeToken = 'synthetic-bridge',
   bridgeGeneration = 0,
+  documentBinding?: string | null,
 ): MessageEvent =>
   new MessageEvent('message', {
     source,
@@ -101,6 +102,7 @@ export const event = (
       callId: 'save-state',
       bridgeToken,
       bridgeGeneration,
+      ...(documentBinding == null ? {} : { documentBinding }),
     },
   });
 
@@ -300,9 +302,7 @@ const isSrcdocReady = (frame: HTMLIFrameElement, previous?: Document): boolean =
 };
 
 const waitForSrcdoc = (frame: HTMLIFrameElement, previous?: Document): Promise<void> => {
-  if (isSrcdocReady(frame, previous)) {
-    return Promise.resolve();
-  }
+  if (isSrcdocReady(frame, previous)) return Promise.resolve();
   return new Promise<void>((resolve) => {
     const onLoad = (): void => {
       if (isSrcdocReady(frame, previous)) {
@@ -329,10 +329,9 @@ export const readIframeSaveRequests = async (
   const received = deferred();
   const read = ({ source, data }: MessageEvent<SaveConfirmationRequest | null>): void => {
     if (source !== frame.contentWindow) return;
-    if (data?.type === PluginIframeMessageType.API_CALL && data.method === METHOD) {
-      requests.push(data);
-      if (requests.length === 2) received.resolve();
-    }
+    if (data?.type !== PluginIframeMessageType.API_CALL || data.method !== METHOD) return;
+    requests.push(data);
+    if (requests.length === 2) received.resolve();
   };
 
   window.addEventListener('message', read);
@@ -406,16 +405,17 @@ export const mountPlugin = async (): Promise<MountedPlugin> => {
     }
     await waitForSrcdoc(frame);
     const source = frame.contentWindow;
-    if (!source) {
-      throw new Error('Plugin iframe has no window after loading srcdoc');
-    }
+    const documentBinding = frame.contentDocument?.documentElement.getAttribute(
+      'data-sp-save-document',
+    );
+    if (!source) throw new Error('Plugin iframe has no window after loading srcdoc');
     const handler = registration[1] as (msg: Event) => Promise<void>;
     return {
       component,
       source,
       findFrame,
       destroy,
-      send: (): Promise<void> => handler(event(source, [KEY], token)),
+      send: (): Promise<void> => handler(event(source, [KEY], token, 0, documentBinding)),
     };
   } catch (error) {
     destroy();
