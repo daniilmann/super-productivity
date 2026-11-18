@@ -109,7 +109,8 @@ export class SaveStateService {
     try {
       const valueSha256 = await this._verifiedValueHash(raw, receipt);
       if (valueSha256 === undefined) return { state: 'unknown' };
-      const savedAt = new Date(receipt.confirmedAt + receipt.correction).toISOString();
+      const savedAt = new Date(receipt.confirmedAt + receipt.correction).getTime();
+      if (!Number.isSafeInteger(savedAt)) return { state: 'unknown' };
       return { state: 'saved', savedAt, valueSha256 };
     } catch {
       return { state: 'unknown' };

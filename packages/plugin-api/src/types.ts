@@ -627,7 +627,7 @@ export interface SaveState {
   keys: Record<
     string,
     | { state: 'failed' | 'pending' | 'unknown' }
-    | { state: 'saved'; savedAt: string; valueSha256: string }
+    | { state: 'saved'; savedAt: number; valueSha256: string }
   >;
 }
 
@@ -862,7 +862,7 @@ export interface PluginAPI {
 
   loadSyncedData(key?: string): Promise<string | null>;
 
-  /** Read server confirmation for this plugin's keys. savedAt is approximate UTC. */
+  /** Read server confirmation for this plugin's keys. savedAt is approximate UTC epoch milliseconds. */
   getSyncedDataSaveState(keys: string[]): Promise<SaveState>;
 
   /**
