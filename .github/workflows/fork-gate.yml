@@ -352,7 +352,7 @@ jobs:
         with:
           name: e2e-frontend-${{ github.sha }}
           path: .tmp/angular-dist
-      - run: npm run e2e:supersync:file e2e/tests/sync/supersync-save-confirmation.fork.spec.ts --project=chromium --retries=0 --reporter=list,json
+      - run: npm run e2e:supersync:file -- e2e/tests/sync/supersync-save-confirmation.fork.spec.ts --project=chromium --retries=0 --reporter=list,json
         env:
           COMPOSE_PROJECT_NAME: save-confirmation-e2e
           PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/save-confirmation.json
