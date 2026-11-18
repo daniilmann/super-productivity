@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { ClientIdService } from '../../core/util/client-id.service';
 import { SnackService } from '../../core/snack/snack.service';
 import { SyncWrapperService } from '../../imex/sync/sync-wrapper.service';
+import { BACKUP_IMPORT } from '../../plugins/save-confirmation/save-state.test-fixture';
 import { SaveStateService } from '../../plugins/save-confirmation/save-state.service';
 import { composeId } from '../../plugins/util/plugin-persistence-key.util';
 import { IS_ONLINE$ } from '../../util/is-online.token';
@@ -38,7 +39,7 @@ const CLIENT = 'B_commitClient';
 const NEXT_CLIENT = 'B_restoreClient';
 const A = '{"ver":"a"}';
 const B = '{"ver":"b"}';
-const UNKNOWN = { state: 'unknown' };
+const UNKNOWN = { state: 'unknown' } as const;
 const SHA_B = '88c0829772c0232be2a93e19af50482da5eb20f2d6c7f0baa89e566ea4a8bb74';
 
 const deferred = (): { promise: Promise<void>; resolve: () => void } => {
@@ -54,6 +55,8 @@ describe('OperationLogStoreService save confirmation', () => {
   let client: ClientIdService;
   let adapter: IndexedDbOpLogAdapter;
   let provider: jasmine.SpyObj<OperationSyncCapable>;
+  let uploadOps: jasmine.Spy<OperationSyncCapable['uploadOps']>;
+  let uploadSnapshot: jasmine.Spy<OperationSyncCapable['uploadSnapshot']>;
 
   const boot = async (data = B): Promise<void> => {
     adapter = new IndexedDbOpLogAdapter();
@@ -66,7 +69,7 @@ describe('OperationLogStoreService save confirmation', () => {
         { provide: IS_ONLINE$, useValue: of(true) },
         {
           provide: SnackService,
-          useValue: jasmine.createSpyObj('SnackService', ['open']),
+          useValue: jasmine.createSpyObj<SnackService>('SnackService', ['open']),
         },
         { provide: OperationEncryptionService, useValue: {} },
         {
@@ -115,11 +118,16 @@ describe('OperationLogStoreService save confirmation', () => {
     );
     provider.getLastServerSeq.and.resolveTo(0);
     provider.setLastServerSeq.and.resolveTo();
-    provider.uploadOps.and.callFake(async (ops) => ({
-      results: [...ops].reverse().map(({ id }) => ({ opId: id, accepted: true })),
-      latestSeq: ops.length,
-    }));
-    provider.uploadSnapshot.and.resolveTo({ accepted: true, serverSeq: 1 });
+    uploadOps = provider.uploadOps.and.callFake((ops) =>
+      Promise.resolve({
+        results: [...ops].reverse().map(({ id }) => ({ opId: id, accepted: true })),
+        latestSeq: ops.length,
+      }),
+    );
+    uploadSnapshot = provider.uploadSnapshot.and.resolveTo({
+      accepted: true,
+      serverSeq: 1,
+    });
   });
 
   type SaveState = Awaited<ReturnType<SaveStateService['getSyncedDataSaveState']>>;
@@ -152,7 +160,7 @@ describe('OperationLogStoreService save confirmation', () => {
     actionType: ActionType.LOAD_ALL_DATA,
     entityType: 'ALL',
     entityId: undefined,
-    opType: OpType.BackupImport,
+    opType: BACKUP_IMPORT,
     payload: {
       task: { ids: [], entities: {} },
       project: { ids: [], entities: {} },
@@ -205,7 +213,7 @@ describe('OperationLogStoreService save confirmation', () => {
         },
       );
 
-      const nativeTx = IDBDatabase.prototype.transaction;
+      const nativeTx = Reflect.get(IDBDatabase.prototype, 'transaction');
       const receiptWrites = spyOn(IDBDatabase.prototype, 'transaction').and.callFake(
         function (this: IDBDatabase, stores, mode, options) {
           if (this.name !== DB_NAME && mode === 'readwrite') {
@@ -217,14 +225,16 @@ describe('OperationLogStoreService save confirmation', () => {
       );
       const upload = TestBed.inject(OperationLogUploadService);
       if (path === 'duplicate') {
-        provider.uploadOps.and.callFake(async (ops) => ({
-          results: ops.map(({ id }) => ({
-            opId: id,
-            accepted: false,
-            errorCode: 'DUPLICATE_OPERATION',
-          })),
-          latestSeq: ops.length,
-        }));
+        uploadOps.and.callFake((ops) =>
+          Promise.resolve({
+            results: ops.map(({ id }) => ({
+              opId: id,
+              accepted: false,
+              errorCode: 'DUPLICATE_OPERATION',
+            })),
+            latestSeq: ops.length,
+          }),
+        );
         const result = await upload.uploadPendingOps(provider);
         await TestBed.inject(RejectedOpsHandlerService).handleRejectedOps(
           [...result.rejectedOps].reverse(),
@@ -243,8 +253,8 @@ describe('OperationLogStoreService save confirmation', () => {
       } else {
         await upload.uploadPendingOps(provider);
         if (path === 'snapshot') {
-          expect(provider.uploadSnapshot).toHaveBeenCalled();
-          expect(provider.uploadOps).not.toHaveBeenCalled();
+          expect(uploadSnapshot).toHaveBeenCalled();
+          expect(uploadOps).not.toHaveBeenCalled();
         }
       }
 
@@ -319,8 +329,11 @@ describe('OperationLogStoreService save confirmation', () => {
       await importSameData(); // No loadAllData: the applied bytes are unchanged.
       if (rejectImport) {
         const imported = await journal.getLatestFullStateOp();
-        expect(imported?.opType).toBe(OpType.BackupImport);
-        await journal.markRejected([imported!.id]);
+        expect(imported?.opType).toBe(BACKUP_IMPORT);
+        if (!imported) {
+          throw new Error('Expected the rejected backup import to exist');
+        }
+        await journal.markRejected([imported.id]);
       }
       expect(await read()).toEqual(UNKNOWN);
       TestBed.resetTestingModule();
@@ -333,7 +346,7 @@ describe('OperationLogStoreService save confirmation', () => {
   it('keeps a missed receipt unconfirmed after the operation has committed', async () => {
     const entry = op(B);
     const seq = await journal.append(entry);
-    const nativeTx = IDBDatabase.prototype.transaction;
+    const nativeTx = Reflect.get(IDBDatabase.prototype, 'transaction');
     const transaction = spyOn(IDBDatabase.prototype, 'transaction').and.callFake(
       function (this: IDBDatabase, stores, mode, options) {
         if (this.name !== DB_NAME && mode === 'readwrite') {
