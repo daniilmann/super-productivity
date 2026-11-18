@@ -246,6 +246,8 @@ export const createPluginApiScript = (config: PluginIframeConfig): string => {
         let callId = 0;
         const bridgeToken = ${JSON.stringify(config.bridgeToken)};
         const bridgeGeneration = ${JSON.stringify(config.bridgeGeneration)};
+        const documentBinding = Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+        document.documentElement.setAttribute('data-sp-save-document', documentBinding);
         const pendingCalls = new Map();
         const dialogButtonHandlers = new Map();
         const hookHandlers = new Map(); // Store hook handlers by hook type
@@ -374,6 +376,7 @@ export const createPluginApiScript = (config: PluginIframeConfig): string => {
               bridgeToken: bridgeToken,
               bridgeGeneration: bridgeGeneration,
               method: method,
+              ...(method === 'getSyncedDataSaveState' ? { documentBinding } : {}),
               args: processedArgs || [],
               callId: id
             }, '*');
@@ -601,8 +604,7 @@ export const createPluginApiScript = (config: PluginIframeConfig): string => {
  * including classic inline/blocking scripts that run at parse time. It was
  * previously appended before </body>, which left parse-time plugin code
  * without the API and pushed plugins into local-storage fallbacks that
- * silently bypass sync (#9526). The script only touches `window` /
- * `window.parent` (no DOM access), so running it before <body> exists is safe;
+ * silently bypass sync (#9526). The document root already exists then, and
  * the host's only reaction to the (now earlier) READY message is a log line.
  *
  * Returned as a string for `iframe.srcdoc`, NOT a `blob:` URL: srcdoc is parsed
@@ -655,7 +657,6 @@ export const handlePluginMessage = async (
   // Handle API calls
   if (data.type === PluginIframeMessageType.API_CALL && data.callId) {
     const { method, args = [], callId } = data;
-    const source = event.source as Window | null;
 
     try {
       if (!ALLOWED_IFRAME_API_METHODS.has(method)) {
@@ -665,12 +666,11 @@ export const handlePluginMessage = async (
       if (method === 'getSyncedDataSaveState') {
         if (!isCurrent()) return;
         await config.boundMethods.getSyncedDataSaveState(args[0], (result) => {
-          if (isCurrent()) {
-            source?.postMessage(
-              { type: PluginIframeMessageType.API_RESPONSE, callId, result },
-              '*',
-            );
-          }
+          if (!isCurrent()) return;
+          (event.source as Window)?.postMessage(
+            { type: PluginIframeMessageType.API_RESPONSE, callId, result },
+            '*',
+          );
         });
         return;
       }
@@ -866,7 +866,7 @@ export const handlePluginMessage = async (
       }
     } catch (error) {
       if (method === 'getSyncedDataSaveState' && !isCurrent()) return;
-      source?.postMessage(
+      (event.source as Window)?.postMessage(
         {
           type: PluginIframeMessageType.API_ERROR,
           callId,
