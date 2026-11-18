@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { ClientIdService } from '../../core/util/client-id.service';
 import { SnackService } from '../../core/snack/snack.service';
 import { SyncWrapperService } from '../../imex/sync/sync-wrapper.service';
-import { BACKUP_IMPORT } from '../../plugins/save-confirmation/save-state.test-fixture';
+import { BACKUP_IMPORT } from '../../plugins/save-confirmation/testing/save-state.fixtures.fork.spec';
 import { SaveStateService } from '../../plugins/save-confirmation/save-state.service';
 import { composeId } from '../../plugins/util/plugin-persistence-key.util';
 import { IS_ONLINE$ } from '../../util/is-online.token';

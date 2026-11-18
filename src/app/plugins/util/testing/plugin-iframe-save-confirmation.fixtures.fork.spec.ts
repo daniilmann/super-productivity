@@ -46,7 +46,7 @@ import { PluginHttpService } from '../../issue-provider/plugin-http.service';
 import { PluginIssueProviderRegistryService } from '../../issue-provider/plugin-issue-provider-registry.service';
 import { PluginOAuthBridgeService } from '../../oauth/plugin-oauth-bridge.service';
 import { PluginBaseCfg, PluginManifest } from '../../plugin-api.model';
-import { BACKUP_IMPORT } from '../../save-confirmation/testing/save-state.test-fixture';
+import { BACKUP_IMPORT } from '../../save-confirmation/testing/save-state.fixtures.fork.spec';
 import { PluginBridgeService } from '../../plugin-bridge.service';
 import { PluginCleanupService } from '../../plugin-cleanup.service';
 import { PluginConfigService } from '../../plugin-config.service';
