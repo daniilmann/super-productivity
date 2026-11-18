@@ -1,7 +1,7 @@
 # Fork gate and release builds (see FORK.md).
 #
-# Fast gate: every push and manual run. Release builds require a checked fast tag.
-# A manual branch run with build: true uses the input tag for a debug-signed build.
+# Fast gate runs on every push and manual run. Ordinary release tags also require Full gate.
+# Manual branch builds use a debug key. Manual Full gate runs only checks.
 name: fork-gate
 
 on:
@@ -10,6 +10,10 @@ on:
     tags: ['v*-fork.*']
   workflow_dispatch:
     inputs:
+      full:
+        description: 'Run Full gate on a branch (always enabled on tags)'
+        type: boolean
+        default: false
       build:
         description: 'Also build DMG and APK'
         type: boolean
@@ -38,6 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Base commit is an ancestor of HEAD
@@ -82,11 +87,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: node --test fork/*.test.mjs
       - run: node --test tools/verify-android-shortcuts.test.js tools/verify-android-url-hosts.test.js
       - name: Only fork workflows in .github/workflows
@@ -103,6 +110,20 @@ jobs:
         run: node fork/check-upstream-budget.mjs
       - name: Check protected packages match the pinned upstream base
         run: node fork/check-pinned-packages.mjs
+      - name: Audit workflow
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          trap 'rm -rf -- "$dir"' EXIT
+          archive=zizmor-x86_64-unknown-linux-gnu.tar.gz
+          curl --fail --silent --show-error --location --proto '=https' \
+            "https://github.com/zizmorcore/zizmor/releases/download/v1.31.1/$archive" -o "$dir/$archive"
+          (
+            cd "$dir"
+            printf '%s  %s\n' d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99 "$archive" | sha256sum --check
+            tar -xzf "$archive" zizmor
+          )
+          "$dir/zizmor" --offline --min-severity=medium --format=github .github/workflows/fork-gate.yml
 
   lint:
     name: Lint (upstream)
@@ -111,6 +132,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/setup-deps
@@ -122,25 +144,32 @@ jobs:
         run: node fork/run-upstream-lint.mjs
 
   tag-route:
-    name: Check release tag
-    if: github.ref_type == 'tag'
+    name: Check release tag or manual Full gate revision
+    if: >-
+      (github.event_name == 'push' && github.ref_type == 'tag') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.ref_type == 'tag' || (github.ref_type == 'branch' && inputs.full)))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       tag: ${{ steps.route.outputs.tag }}
-      sha: ${{ steps.route.outputs.sha }}
+      sha: ${{ steps.route.outputs.sha || steps.branch.outputs.sha }}
       oid: ${{ steps.route.outputs.oid }}
-      mode: ${{ steps.route.outputs.mode }}
+      mode: ${{ steps.route.outputs.mode || steps.branch.outputs.mode }}
       notes: ${{ steps.route.outputs.notes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        if: github.ref_type == 'tag'
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - id: route
+        if: github.ref_type == 'tag'
         env:
           PUSH_AFTER: ${{ github.event.after }}
           PUSH_BEFORE: ${{ github.event.before }}
@@ -150,19 +179,27 @@ jobs:
           BUILD_REQUESTED: ${{ inputs.build }}
           GH_TOKEN: ${{ github.token }}
         run: node fork/release-route.mjs inspect-tag
+      - id: branch
+        if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' && inputs.full
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          printf 'mode=full\nsha=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
   unit:
     name: Unit (upstream, two time zones)
     needs: tag-route
     if: >-
       !cancelled() &&
-      (needs.tag-route.result == 'success' ||
+      ((needs.tag-route.result == 'success' && needs.tag-route.outputs.sha == github.sha &&
+        (needs.tag-route.outputs.mode == 'fast' || needs.tag-route.outputs.mode == 'full')) ||
        (github.ref_type == 'branch' && needs.tag-route.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-e2e
         if: needs.tag-route.outputs.mode != 'fast'
@@ -185,6 +222,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-deps
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -192,6 +230,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           accept-android-sdk-licenses: true
@@ -251,27 +291,180 @@ jobs:
           echo "results: $RESULTS"
           [ "$RESULTS" = "success success success success success" ]
 
+  e2e-build:
+    name: Build E2E frontend
+    needs: tag-route
+    if: needs.tag-route.outputs.mode == 'full' && needs.tag-route.outputs.sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-deps
+      - run: npm run buildFrontend:e2e
+      - name: Verify build output
+        run: |
+          set -euo pipefail
+          test -f .tmp/angular-dist/browser/index.html
+          test -f .tmp/angular-dist/browser/assets/bundled-plugins/api-test-plugin/manifest.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-frontend-${{ github.sha }}
+          path: .tmp/angular-dist
+          if-no-files-found: error
+          retention-days: 1
+
+  chromium:
+    name: Chromium E2E (${{ matrix.shard }}/3)
+    needs: e2e-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-e2e
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v4
+        with:
+          name: e2e-frontend-${{ github.sha }}
+          path: .tmp/angular-dist
+      - run: npm run e2e -- --project=chromium --shard=${{ matrix.shard }}/3
+
+  save-confirmation:
+    name: Save confirmation E2E (Chromium and SuperSync)
+    needs: e2e-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-e2e
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v4
+        with:
+          name: e2e-frontend-${{ github.sha }}
+          path: .tmp/angular-dist
+      - run: npm run e2e:supersync:file e2e/tests/sync/supersync-save-confirmation.fork.spec.ts --project=chromium --retries=0 --reporter=list,json
+        env:
+          COMPOSE_PROJECT_NAME: save-confirmation-e2e
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/save-confirmation.json
+      - name: Require a passed save confirmation test
+        env:
+          REPORT: ${{ runner.temp }}/save-confirmation.json
+        run: |
+          set -euo pipefail
+          jq -e '
+            [.suites[] | recurse(.suites[]?) | .specs[]? | .tests[]] |
+            length == 1 and (.[0] | .projectName == "chromium" and
+              .expectedStatus == "passed" and [.results[].status] == ["passed"])
+          ' "$REPORT"
+
+  android-e2e:
+    name: Android instrumentation (API 35 and 34)
+    needs: tag-route
+    if: needs.tag-route.outputs.mode == 'full' && needs.tag-route.outputs.sha == github.sha
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-deps
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          accept-android-sdk-licenses: true
+          packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
+      - name: Prepare the upstream Capacitor smoke page
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/assets/public
+          npx cap update android
+          cp android/smoke-page/index.html android/app/src/main/assets/public/index.html
+          cp android/smoke-page/capacitor.config.json android/app/src/main/assets/capacitor.config.json
+      - name: Enable KVM
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' |
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Instrumentation and minified launch smoke (API 35)
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          working-directory: ./android
+          script: bash "$GITHUB_WORKSPACE/android/run-android-checks.sh"
+      - name: IME inset shim (API 34)
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          avd-name: test-api34
+          working-directory: ./android
+          script: bash "$GITHUB_WORKSPACE/android/run-android-ime-check.sh"
+      - name: Upload instrumentation diagnostics
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-instrumentation-diagnostics
+          path: |
+            android/app/build/reports/androidTests/connected/
+            android/app/build/outputs/androidTest-results/connected/
+            android/build/instrumentation-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 14
+
   full-gate:
     name: Full gate
-    needs: [tag-route, gate]
-    if: needs.tag-route.outputs.mode == 'full'
+    needs: [tag-route, gate, e2e-build, chromium, save-confirmation, android-e2e]
+    if: >-
+      !cancelled() &&
+      ((github.event_name == 'push' && github.ref_type == 'tag' &&
+        (needs.tag-route.result != 'success' || needs.tag-route.outputs.mode != 'fast')) ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref_type == 'tag' || (github.ref_type == 'branch' && inputs.full))))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Refuse release until full gate is implemented
+      - name: All full gate jobs passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          echo "::error::Full release gate is unavailable. The save-confirmation end-to-end suite and the remaining long checks are not wired into this workflow."
-          exit 1
+          echo "results: $RESULTS"
+          [ "$RESULTS" = "success success success success success success" ]
 
   version:
     name: Release version
-    needs: [gate, tag-route]
+    needs: [gate, tag-route, full-gate]
     if: >-
       !cancelled() && needs.gate.result == 'success' &&
       ((github.event_name == 'push' && github.ref_type == 'tag' &&
-        needs.tag-route.result == 'success' && needs.tag-route.outputs.mode == 'fast') ||
+        needs.tag-route.result == 'success' &&
+        (needs.tag-route.outputs.mode == 'fast' && needs.full-gate.result == 'skipped' ||
+         (needs.tag-route.outputs.mode == 'full' && needs.full-gate.result == 'success')) &&
+        needs.tag-route.outputs.sha == github.sha) ||
        (github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' &&
-        inputs.build && needs.tag-route.result == 'skipped'))
+        inputs.build && needs.tag-route.result == 'skipped' &&
+        !inputs.full && needs.full-gate.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -284,6 +477,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         if: github.ref_type == 'branch'
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
       - id: tag
         env:
@@ -293,8 +487,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_REF_TYPE" = tag ]; then
+            [ "$GITHUB_EVENT_NAME" = push ]
+            [ "$GITHUB_REF" = "refs/tags/$CHECKED_TAG" ]
+            [ "$CHECKED_SHA" = "$GITHUB_SHA" ]
             printf 'tag=%s\nsha=%s\nrelease=true\n' "$CHECKED_TAG" "$CHECKED_SHA" >> "$GITHUB_OUTPUT"
           else
+            [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_TYPE" = branch ] || exit 1
             node fork/release-route.mjs validate-tag "$INPUT_TAG"
             printf 'tag=%s\nsha=%s\nrelease=false\n' "$INPUT_TAG" "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           fi
@@ -401,6 +599,8 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
       - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           accept-android-sdk-licenses: true

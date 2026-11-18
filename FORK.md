@@ -142,3 +142,18 @@ Upstream composite actions in `.github/actions/` are reused as they are.
 
 Android Lint runs against `fork/android-lint-baseline.xml`, taken on the pinned upstream tag and applied by
 the Gradle init script `fork/android-lint.init.gradle` (no change to `build.gradle`). New error-level issues fail the gate.
+
+## Running the Full gate
+
+The Full gate is now available in `fork-gate.yml`. In Actions, select **fork-gate** → **Run workflow**,
+choose the candidate branch, set `full` to true, leave `build` false, and leave the version input
+empty. Confirm the run's commit matches the candidate. A manual run on a valid fork tag runs
+the Full gate automatically, including on a tag originally pushed for a fast release. Full gate
+dispatches only run checks. Manual debug builds use a branch with `full` false and `build` true.
+
+The Full gate requires the Fast gate, all three upstream Chromium shards, the Chromium
+save-confirmation scenario against SuperSync, and Android instrumentation on fresh
+`google_apis` emulators for API 35 and 34. Both browser suites use the E2E frontend built from
+the run's commit. Ordinary tag pushes require the Full gate before building release assets.
+When the upstream SuperSync suite applies, run `CI=true npm run e2e:supersync` on the exact
+candidate commit before tagging and record a passing result for that commit.
