@@ -21,19 +21,18 @@ const gitEnv = Object.fromEntries(
 
 /** @param {string} root @param {string[]} args @param {string} [input] */
 function git(root, args, input) {
-  return execFileSync(
-    'git',
-    [
-      '-c',
-      'user.name=Release Test',
-      '-c',
-      'user.email=release-test@example.invalid',
-      '-c',
-      'commit.gpgsign=false',
-      ...args,
-    ],
-    { cwd: root, encoding: 'utf8', env: gitEnv, input, stdio: ['pipe', 'pipe', 'pipe'] },
-  ).trim();
+  const config = [
+    'user.name=Release Test',
+    'user.email=release-test@example.invalid',
+    'commit.gpgsign=false',
+  ];
+  return execFileSync('git', [...config.flatMap((value) => ['-c', value]), ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: gitEnv,
+    input,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  }).trim();
 }
 
 /** @param {string} root @param {string} path @param {string} content */
@@ -95,22 +94,8 @@ const push = (sha, after) => ({
 
 void test('the documented Git command creates the exact fast annotation', (t) => {
   const { remote, checkout, sha } = repository(t);
-  git(
-    remote,
-    [
-      '-c',
-      'tag.gpgsign=true',
-      'tag',
-      '--annotate',
-      '--no-sign',
-      '--cleanup=verbatim',
-      '--file',
-      '-',
-      TAG,
-      sha,
-    ],
-    FAST,
-  );
+  const args = ['tag', '--annotate', '--no-sign', '--cleanup=verbatim', '--file', '-'];
+  git(remote, ['-c', 'tag.gpgsign=true', ...args, TAG, sha], FAST);
   const oid = git(remote, ['rev-parse', REF]);
   assert.equal(inspectTag(checkout, push(sha, oid)).mode, 'fast');
 });
@@ -156,14 +141,8 @@ void test('validates event, full SHA, ref namespace and exact tag format', (t) =
   const { checkout, sha } = repository(t);
   const run = push(sha, sha);
   assert.throws(() => inspectTag(checkout, { ...run, event: 'schedule' }), /unsupported/);
-  assert.throws(
-    () => inspectTag(checkout, { ...run, sha: sha.slice(0, 8) }),
-    /full event SHA/,
-  );
-  assert.throws(
-    () => inspectTag(checkout, { ...run, ref: 'refs/heads/main' }),
-    /tag ref/,
-  );
+  for (const invalid of [{ sha: sha.slice(0, 8) }, { ref: 'refs/heads/main' }])
+    assert.throws(() => inspectTag(checkout, { ...run, ...invalid }), /full event SHA/);
   for (const tag of ['v21.0.0-fork.011', TAG + '\n', 'v21.0.0-fork.1000']) {
     assert.throws(
       () => inspectTag(checkout, { ...run, ref: 'refs/tags/' + tag }),
@@ -175,15 +154,10 @@ void test('validates event, full SHA, ref namespace and exact tag format', (t) =
 void test('rejects checkout and event mismatches', (t) => {
   const { remote, checkout, sha, base } = repository(t);
   const oid = annotate(remote, sha, FAST);
-  assert.throws(
-    () => inspectTag(checkout, push(base, oid)),
-    /differs from the event commit/,
-  );
+  const mismatch = /differs from the event commit/;
+  assert.throws(() => inspectTag(checkout, push(base, oid)), mismatch);
   git(checkout, ['checkout', '--detach', base]);
-  assert.throws(
-    () => inspectTag(checkout, push(sha, oid)),
-    /differs from the event commit/,
-  );
+  assert.throws(() => inspectTag(checkout, push(sha, oid)), mismatch);
 });
 
 void test('rejects a tag beyond remote main', (t) => {
@@ -199,20 +173,16 @@ void test('rejects a tag beyond remote main', (t) => {
   );
 });
 
-void test('rejects an annotated object with a different embedded name', (t) => {
+void test('rejects annotated tags with a different name or an indirect target', (t) => {
   const { remote, checkout, sha } = repository(t);
-  const oid = annotate(remote, sha, FAST, { name: 'v21.0.0-fork.12' });
-  assert.throws(() => inspectTag(checkout, push(sha, oid)), /name the ref/);
-});
-
-void test('rejects an annotated tag pointing at a tag, even if the commit matches', (t) => {
-  const { remote, checkout, sha } = repository(t);
+  const wrongName = annotate(remote, sha, FAST, { name: 'v21.0.0-fork.12' });
+  assert.throws(() => inspectTag(checkout, push(sha, wrongName)), /name the ref/);
   const inner = annotate(remote, sha, FAST);
-  const oid = annotate(remote, inner, FAST, { type: 'tag' });
-  assert.throws(() => inspectTag(checkout, push(sha, oid)), /point directly/);
+  const outer = annotate(remote, inner, FAST, { type: 'tag' });
+  assert.throws(() => inspectTag(checkout, push(sha, outer)), /point directly/);
 });
 
-void test('pins the raw OID and rejects replacement at the same commit and deletion', (t) => {
+void test('refuses replaced tag and existing release', (t) => {
   const { remote, checkout, sha } = repository(t);
   const original = annotate(remote, sha, FAST);
   const route = inspectTag(checkout, push(sha, original));
@@ -223,14 +193,16 @@ void test('pins the raw OID and rejects replacement at the same commit and delet
     () => inspectTag(checkout, push(sha, original)),
     /differs from the push payload/,
   );
-  assert.throws(() => {
+  const verify = () => {
     verifyTag(checkout, TAG, route.oid);
-  }, /differs from the checked object/);
+  };
+  assert.throws(verify, /differs from the checked object/);
   git(remote, ['update-ref', '-d', REF]);
-  assert.throws(() => {
-    verifyTag(checkout, TAG, route.oid);
-  }, /ls-remote/);
+  assert.throws(verify, /ls-remote/);
   assert.throws(() => inspectTag(checkout, push(sha, original)), /fetch/);
+  const release = probePublisher(checkout, 'echo "$TAG"');
+  assert.equal(release.status, 1, release.stderr);
+  assert.match(release.stdout, /a Release .* already exists/);
 });
 
 void test('rejects a different annotated object before the first fetch', (t) => {
@@ -269,17 +241,14 @@ void test('selects the preceding published release by numeric version, not Git t
   const previous = 'v21.0.0-fork.10';
   git(remote, ['update-ref', `refs/tags/${previous}`, base]);
   git(remote, ['update-ref', 'refs/tags/v21.0.0-fork.9', 'HEAD']);
-  const published = () => [
-    'v21.0.0-fork.9',
-    TAG,
-    'v21.0.0-fork.12',
-    previous,
-    'other-release',
-  ];
-  assert.deepEqual(superSyncStatus(checkout, TAG, sha, published), {
-    required: false,
-    reason: `${previous} (${base}) vs ${sha}: pin and sync client unchanged`,
-  });
+  const published = ['v21.0.0-fork.9', TAG, 'v21.0.0-fork.12', previous, 'other-release'];
+  assert.deepEqual(
+    superSyncStatus(checkout, TAG, sha, () => published),
+    {
+      required: false,
+      reason: `${previous} (${base}) vs ${sha}: pin and sync client unchanged`,
+    },
+  );
 });
 
 for (const path of [
@@ -292,10 +261,8 @@ for (const path of [
     const previous = 'v20.0.0-fork.80';
     const changed = commit(checkout, path, 'Changed');
     git(remote, ['update-ref', `refs/tags/${previous}`, sha]);
-    assert.equal(
-      superSyncStatus(checkout, TAG, changed, () => [previous]).required,
-      true,
-    );
+    const status = superSyncStatus(checkout, TAG, changed, () => [previous]);
+    assert.equal(status.required, true);
   });
 }
 
@@ -334,19 +301,17 @@ void test('release notes contain exactly the closed list of skipped checks', () 
 void test('detects any discovered fork Angular suite in the shipped JS', (t) => {
   const { checkout } = repository(t);
   put(checkout, 'src/app/first.fork.spec.ts', "describe('First fork suite', () => {});");
-  put(
-    checkout,
-    'src/app/second.fork.spec.ts',
-    "describe('Second fork suite', () => {});",
-  );
+  const secondSpec = 'src/app/second.fork.spec.ts';
+  put(checkout, secondSpec, "describe('Second fork suite', () => {});");
   git(checkout, ['add', 'src']);
   const out = join(checkout, 'build');
   put(out, 'chunk.js', 'const fixture = "Application";');
   checkWebSpecs(checkout, out);
   put(out, 'nested/from-spec.js', 'describe("Second fork suite",()=>{});');
-  assert.throws(() => {
+  const check = () => {
     checkWebSpecs(checkout, out);
-  }, /Second fork suite/);
+  };
+  assert.throws(check, /Second fork suite/);
 });
 
 const workflow = readFileSync(
@@ -364,40 +329,87 @@ function job(name) {
   return section;
 }
 
-void test('the Fast gate requires five successes and rejects each non-success result', () => {
-  const gate = job('gate');
-  assert.match(gate, /needs: \[base, fork-files, lint, unit, android\]/);
+/** @param {string} name */
+function needs(name) {
+  const list = /^    needs: \[([^\n]+)\]$/m.exec(job(name))?.[1];
+  assert.ok(list, `missing needs list for ${name}`);
+  return list.split(/,\s*/);
+}
+
+const fastJobs = ['base', 'fork-files', 'lint', 'unit', 'android'];
+
+/** @param {string} name */
+function checkRequiredResults(name) {
+  const gate = job(name);
   const run = gate.split('        run: |\n')[1];
   assert.ok(run);
-  const success = Array.from({ length: 5 }, () => 'success');
-  /** @param {string[]} results */
-  const result = (results) =>
-    spawnSync('bash', ['-e', '-c', run], {
-      env: { ...process.env, RESULTS: results.join(' ') },
-    }).status;
-  assert.equal(result(success), 0);
-  for (const value of ['failure', 'cancelled', 'skipped']) {
-    for (const i of success.keys())
+  const dependencies = needs(name);
+  const success = dependencies.map(() => 'success');
+  for (const status of ['skipped', 'failure', 'cancelled', '', 'success']) {
+    for (const [index, dependency] of dependencies.entries()) {
+      const results = [...success];
+      if (status) results[index] = status;
+      else results.splice(index, 1);
+      const probe = spawnSync('bash', ['-e', '-c', run], {
+        env: { ...process.env, RESULTS: results.join(' ') },
+      });
+      assert.ifError(probe.error);
       assert.equal(
-        result(success.map((status, position) => (position === i ? value : status))),
-        1,
+        probe.status,
+        Number(status !== 'success'),
+        [name, dependency, status || 'absent'].join(' '),
       );
+    }
   }
-  assert.equal(result(success.slice(1)), 1);
+  assert.match(gate, /RESULTS: \$\{\{ join\(needs\.\*\.result, ' '\) \}\}/);
+}
+
+void test('ordinary tag requires every applicable full job', () => {
+  const dependencies = needs('full-gate');
+  const jobs = dependencies.map(job);
+  for (const command of [
+    /run: npm run e2e:supersync:file\b[^\n]*\bsupersync-save-confirmation\.fork\.spec\.ts\b/,
+    /run: npm run e2e(?:\s|:file\b|$)/m,
+    /android\/run-android-checks\.sh/,
+    /android\/run-android-ime-check\.sh/,
+  ])
+    assert.ok(
+      jobs.some((body) => command.test(body)),
+      String(command),
+    );
+  for (const name of ['gate', 'tag-route']) assert.ok(dependencies.includes(name), name);
+  const upstreamUnit =
+    /run: npm run test:ci\n\s+if: needs\.tag-route\.outputs\.mode != 'fast'/;
+  assert.match(job('unit'), upstreamUnit);
+  assert.ok(needs('version').includes('full-gate'));
+  assert.match(
+    job('version'),
+    /mode == 'full'\s*&&\s*needs\.full-gate\.result == 'success'/,
+  );
 });
 
-void test('the workflow admits signing and publication only through a checked push tag', () => {
+void test('required skipped failed or cancelled checks block release', () => {
+  checkRequiredResults('full-gate');
+  assert.match(job('full-gate'), /^    if: (?:>-\n\s+)?(?:always\(\)|!cancelled\(\))/m);
+});
+
+void test('fast tag keeps the approved minimum', () => {
+  assert.deepEqual(needs('gate'), fastJobs);
+  checkRequiredResults('gate');
   const version = job('version');
   assert.match(version, /!cancelled\(\) && needs\.gate\.result == 'success'/);
   assert.match(
     version,
-    /github\.event_name == 'push' && github\.ref_type == 'tag' &&\s+needs\.tag-route\.result == 'success' && needs\.tag-route\.outputs\.mode == 'fast'/,
+    /github\.event_name == 'push' && github\.ref_type == 'tag' &&\s+needs\.tag-route\.result == 'success' &&\s*\(?needs\.tag-route\.outputs\.mode == 'fast'/,
   );
+  assert.deepEqual(needs('publish'), ['version', 'build-mac', 'build-apk', 'assets']);
+});
+
+void test('manual checks can never sign or publish', () => {
   assert.match(
-    version,
+    job('version'),
     /github\.event_name == 'workflow_dispatch' && github\.ref_type == 'branch' &&\s+inputs\.build && needs\.tag-route\.result == 'skipped'/,
   );
-  assert.match(job('full-gate'), /mode == 'full'[\s\S]+exit 1/);
 
   const releaseOnly =
     /github\.event_name == 'push' && github\.ref_type == 'tag' &&\s+needs\.version\.outputs\.release == 'true'/;
@@ -418,16 +430,19 @@ void test('the workflow admits signing and publication only through a checked pu
     assert.match(job(name), /ref: \$\{\{ needs\.version\.outputs\.sha \}\}/);
 });
 
-void test('a failed Release list stops the publisher before any write', () => {
+/** @param {string} checkout @param {string} response */
+function probePublisher(checkout, response) {
   const run = job('publish').split('        run: |\n').at(-1);
   assert.ok(run);
-  const result = spawnSync(
-    'bash',
-    ['-c', `gh() { [ "$2" = --paginate ] && return 23; return 24; }\n${run}`],
-    {
-      env: { PATH: process.env.PATH, GITHUB_REPOSITORY: 'example/fork', TAG },
-      encoding: 'utf8',
-    },
-  );
+  const gh = 'gh() { [ "$2" = --paginate ] || exit 24; ' + response + '; }';
+  return spawnSync('bash', ['-c', gh + '\n' + run], {
+    cwd: checkout,
+    env: { PATH: process.env.PATH, GITHUB_REPOSITORY: 'example/fork', TAG },
+    encoding: 'utf8',
+  });
+}
+
+void test('a failed Release list stops the publisher before any write', (t) => {
+  const result = probePublisher(repository(t).checkout, 'return 23');
   assert.equal(result.status, 23, result.stderr);
 });
