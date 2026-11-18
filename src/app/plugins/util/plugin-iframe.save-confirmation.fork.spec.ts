@@ -25,6 +25,7 @@ import {
   expectReply,
   manifest,
   mountPlugin,
+  readIframeSaveRequests,
   replaceIframeDocument,
   rpc,
   saved,
@@ -52,6 +53,37 @@ describe('iframe save confirmation', () => {
     mounted = await mountPlugin();
     return mounted;
   };
+
+  it('binds save confirmation requests to their originating srcdoc', async () => {
+    const bridge = config();
+    const script = createPluginApiScript(bridge);
+    const [first, second] = await Promise.all([
+      readIframeSaveRequests(script),
+      readIframeSaveRequests(script),
+    ]);
+
+    expect(first.document).not.toBe(second.document);
+    const requests = [...first.requests, ...second.requests];
+    for (const request of requests) {
+      expect(request).toEqual(
+        jasmine.objectContaining({
+          args: [[]],
+          bridgeToken: bridge.bridgeToken,
+          bridgeGeneration: bridge.bridgeGeneration,
+        }),
+      );
+    }
+    const bindings = requests.map(({ documentBinding }) => documentBinding);
+    if (!bindings.every((binding) => typeof binding === 'string' && binding.trim())) {
+      throw new Error(
+        `Expected a non-empty documentBinding in each iframe request, got ${bindings.map((binding) => typeof binding).join(', ')}`,
+      );
+    }
+    const [firstBinding, firstRepeat, secondBinding, secondRepeat] = bindings;
+    expect(firstRepeat).toBe(firstBinding);
+    expect(secondRepeat).toBe(secondBinding);
+    expect(secondBinding).not.toBe(firstBinding);
+  }, 5000);
 
   it('routes only the caller keys through the read method', async () => {
     await fixture.acknowledge(OTHER, KEY);

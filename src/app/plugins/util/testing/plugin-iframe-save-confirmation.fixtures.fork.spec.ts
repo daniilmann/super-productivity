@@ -314,6 +314,48 @@ const waitForSrcdoc = (frame: HTMLIFrameElement, previous?: Document): Promise<v
   });
 };
 
+interface SaveConfirmationRequest {
+  type: PluginIframeMessageType;
+  method: string;
+  documentBinding?: unknown;
+}
+
+export const readIframeSaveRequests = async (
+  apiScript: string,
+): Promise<{ document: Document; requests: SaveConfirmationRequest[] }> => {
+  const frame = document.createElement('iframe');
+  frame.sandbox.add('allow-scripts', 'allow-same-origin');
+  const requests: SaveConfirmationRequest[] = [];
+  const received = deferred();
+  const read = ({ source, data }: MessageEvent<SaveConfirmationRequest | null>): void => {
+    if (source !== frame.contentWindow) return;
+    if (data?.type === PluginIframeMessageType.API_CALL && data.method === METHOD) {
+      requests.push(data);
+      if (requests.length === 2) received.resolve();
+    }
+  };
+
+  window.addEventListener('message', read);
+  const timer = window.setTimeout(received.resolve, 3000);
+  try {
+    frame.srcdoc = `<!doctype html>${apiScript}<script>
+      void window.PluginAPI.${METHOD}([]);
+      window.setTimeout(() => window.PluginAPI.${METHOD}([]), 0);
+    </script>`;
+    document.body.appendChild(frame);
+    await received.promise;
+    const doc = frame.contentDocument;
+    if (doc?.URL !== 'about:srcdoc' || requests.length !== 2) {
+      throw new Error('Expected two requests from a loaded srcdoc document');
+    }
+    return { document: doc, requests };
+  } finally {
+    window.clearTimeout(timer);
+    window.removeEventListener('message', read);
+    frame.remove();
+  }
+};
+
 export const replaceIframeDocument = async (frame: HTMLIFrameElement): Promise<void> => {
   const original = frame.contentDocument;
   if (!original) {
