@@ -30,8 +30,9 @@ This repository is a personal fork of Super Productivity. It ships as a separate
 
   The annotation must be exactly `Release-Mode: fast` followed by one newline. Push the tag
   through the publication hook. The workflow checks the raw tag object, the event commit, and
-  reachability from `main`. Other valid tags take the full route, which currently stops with
-  an explicit error while the full gate is being implemented.
+  reachability from `main`. Other valid tags take the full route. The first tag with the save
+  confirmation API, `v20.0.0-fork.5`, always requires the Full gate on its commit, including
+  when the annotation requests a fast release.
 - The fast release runs the fork Angular and Electron tests and keeps the other Fast gate jobs.
   Its release notes are exactly: «Быстрый выпуск. Не прогонялись: unit upstream, e2e Chromium upstream, e2e подтверждения сохранения, инструментальные тесты Android».
   When SuperSync applies, insert `e2e SuperSync upstream` before `инструментальные тесты Android`.

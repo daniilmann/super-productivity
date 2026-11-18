@@ -10,6 +10,7 @@ const TAG_PREFIX = 'refs/tags/';
 const CHECKED_TAG = 'refs/release-check/tag';
 const PREVIOUS_TAG = 'refs/release-check/previous';
 const FAST_ANNOTATION = 'Release-Mode: fast\n';
+const FIRST_SAVE_API_TAG = 'v20.0.0-fork.5';
 const SYNC_PATHS = [
   'fork/upstream-base',
   'src/app/imex/sync',
@@ -83,7 +84,11 @@ export function inspectTag(
       throw new Error('annotated tag must name the ref and point directly at the commit');
     const bodyStart = object.indexOf('\n\n', header.length - 1);
     if (bodyStart < 0) throw new Error('invalid annotated tag object');
-    if (event === 'push' && object.slice(bodyStart + 2) === FAST_ANNOTATION)
+    if (
+      event === 'push' &&
+      tag !== FIRST_SAVE_API_TAG &&
+      object.slice(bodyStart + 2) === FAST_ANNOTATION
+    )
       mode = 'fast';
   } else if (type !== 'commit') {
     throw new Error('release ref must point at a commit or annotated tag');
