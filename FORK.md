@@ -19,6 +19,28 @@ This repository is a personal fork of Super Productivity. It ships as a separate
   working copy only.
 - Android `versionCode` = `M*10^7 + m*10^5 + p*10^3 + N` (`m <= 99`, `p <= 99`, `1 <= N <= 999`).
   The formula only ever changes upwards.
+- After the owner approves a fast release and the candidate commit passes the branch Fast gate,
+  create an annotated tag on the accepted `main` commit. Set `M`, `m`, `p`, and `N` to the
+  release version and `SHA` to that commit:
+
+  ```bash
+  printf '%s\n' 'Release-Mode: fast' |
+    git tag --annotate --no-sign --cleanup=verbatim --file - "v${M}.${m}.${p}-fork.${N}" "$SHA"
+  ```
+
+  The annotation must be exactly `Release-Mode: fast` followed by one newline. Push the tag
+  through the publication hook. The workflow checks the raw tag object, the event commit, and
+  reachability from `main`. Other valid tags take the full route, which currently stops with
+  an explicit error while the full gate is being implemented.
+- The fast release runs the fork Angular and Electron tests and keeps the other Fast gate jobs.
+  Its release notes are exactly: «Быстрый выпуск. Не прогонялись: unit upstream, e2e Chromium upstream, e2e подтверждения сохранения, инструментальные тесты Android».
+  When SuperSync applies, insert `e2e SuperSync upstream` before `инструментальные тесты Android`.
+  Run the applicable skipped checks on the same tag before the next release. Ordinary
+  releases use empty notes.
+- SuperSync applies if `fork/upstream-base` or the sync client paths (`src/app/imex/sync`,
+  `src/app/op-log`, `packages/shared-schema`, `packages/sync-core`, `packages/sync-providers`)
+  differ from the preceding published fork release by version. If the workflow cannot
+  determine or compare that release, it logs the reason and includes SuperSync in the notes.
 
 ## App identity
 
@@ -74,18 +96,24 @@ The fast gate also requires `packages/shared-schema`, `packages/sync-core`, and 
 
 ## Workflows kept in `.github/workflows/`
 
-- `fork-gate.yml` — fast gate on every push; DMG, APK, Plugin API types package and web build on release tags
-  and on manual runs; on a release tag only, the Release is created as a draft, its assets are compared with the
-  built set, and it is published. An existing Release for the tag fails the run; nothing is overwritten.
+- `fork-gate.yml` — Fast gate on every push and manual run. A manual run from a branch with
+  `build: true` and a valid `tag` input builds artifacts with a debug-signed APK. A manual run
+  from a tag takes the full route and rejects `build: true`.
+- Only an admitted tag push can sign the release APK and publish. Builds use the checked
+  commit. Publication checks the raw remote tag object before creating the draft and
+  again before making it public, after comparing the four exact asset names and sizes.
+  An existing Release for the tag fails the run.
 - `LICENSE` ships in every artifact without changing upstream files: in the DMG app as
   `Contents/Resources/LICENSE` (`extraResources` in the overlay), in the APK as `assets/public/LICENSE`
   (copied into the web build before Capacitor sync), and in the web build zip. The build checks each copy.
 - Release assets: `superProductivityTelos-arm64.dmg`, `superProductivityTelos-fdroid.apk`,
-  `super-productivity-plugin-api-<version>.tgz`, `superProductivityTelos-web.zip`. Release notes are empty.
+  `super-productivity-plugin-api-<version>.tgz`, `superProductivityTelos-web.zip`.
 
 ## Fork-only files
 
 - `FORK.md`
+- `fork/release-route.mjs` and `fork/release-route.test.mjs` — tag validation, release routing,
+  release notes, and fork Angular spec exclusion checks.
 - `fork/*` — gate policy, fork lint and coverage check, upstream line budget, pinned upstream packages check, lint probe, identity substitution, APK backup check, upstream lint chain, Android files tests, lint baseline and init script, electron-builder overlay, upstream base, `fork/tsconfig.json`, and their tests where present
 - `eslint.fork.config.js`
 - `.github/workflows/fork-gate.yml`
