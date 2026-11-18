@@ -37,6 +37,7 @@ import {
   PluginManifest,
   PluginNote,
   PluginRequestOptions,
+  SaveState,
   PluginSimpleCounterFull,
   PluginTaskRepeatCfg,
   SnackCfg,
@@ -64,6 +65,7 @@ import { selectNoteFeatureState } from '../features/note/store/note.reducer';
 import { selectTagFeatureState } from '../features/tag/store/tag.reducer';
 import { selectTaskByIdWithSubTaskData } from '../features/tasks/store/task.selectors';
 import { PluginUserPersistenceService } from './plugin-user-persistence.service';
+import { SaveStateService } from './save-confirmation/save-state.service';
 import { listPluginDataKeys, loadPluginPersistedData } from './plugin-data-reader';
 import { PluginConfigService } from './plugin-config.service';
 import { TaskArchiveService } from '../features/archive/task-archive.service';
@@ -246,6 +248,10 @@ export class PluginBridgeService implements OnDestroy {
   ): PluginContextBoundMethods & {
     persistDataSynced: (dataStr: string, key?: string) => Promise<void>;
     loadPersistedData: (key?: string) => Promise<string | null>;
+    getSyncedDataSaveState: (
+      keys: unknown,
+      respond?: (state: SaveState) => void,
+    ) => Promise<SaveState>;
     listSyncedDataKeys: (prefix?: string) => Promise<string[]>;
     getConfig: () => Promise<unknown>;
     downloadFile: (filename: string, data: string) => Promise<void>;
@@ -307,12 +313,15 @@ export class PluginBridgeService implements OnDestroy {
         this._persistDataSynced(pluginId, dataStr, key),
       loadPersistedData: (key?: string) =>
         loadPluginPersistedData(this._pluginUserPersistenceService, pluginId, key),
+      getSyncedDataSaveState: (keys, respond) =>
+        this._injector
+          .get(SaveStateService)
+          .getSyncedDataSaveState(pluginId, keys, respond),
       listSyncedDataKeys: (prefix?: string) =>
         listPluginDataKeys(this._store, pluginId, prefix),
       getConfig: () => this._getConfig(pluginId),
       downloadFile: (filename: string, data: string) =>
         this._downloadFile(filename, data),
-
       // UI registration
       registerHeaderButton: (cfg: PluginHeaderBtnCfg) =>
         this._registerHeaderButton(pluginId, cfg),

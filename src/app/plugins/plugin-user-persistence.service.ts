@@ -35,6 +35,10 @@ import { PluginLog } from '../core/log';
 export class PluginUserPersistenceService {
   private _store = inject(Store);
 
+  hasPendingWrite(entityId: string): boolean {
+    return this._pendingData.has(entityId) || this._committing.has(entityId);
+  }
+
   /**
    * Track the last *committed* persist time per entity id, for rate limiting.
    */

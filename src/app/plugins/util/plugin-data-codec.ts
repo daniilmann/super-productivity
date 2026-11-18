@@ -72,7 +72,7 @@ const base64ToBytes = (b64: string): Uint8Array => {
  * total exceeds `MAX_DECOMPRESSED_SIZE`, avoiding the gigabyte allocation
  * an unbounded `Response.arrayBuffer()` would produce.
  */
-const gunzipBounded = async (bytes: Uint8Array): Promise<string> => {
+const gunzipBounded = async (bytes: Uint8Array): Promise<Uint8Array<ArrayBuffer>> => {
   const stream = new Blob([bytes as BlobPart])
     .stream()
     .pipeThrough(new DecompressionStream('gzip'));
@@ -109,7 +109,7 @@ const gunzipBounded = async (bytes: Uint8Array): Promise<string> => {
     out.set(chunk, offset);
     offset += chunk.length;
   }
-  return TEXT_DECODER.decode(out);
+  return out;
 };
 
 /**
@@ -137,6 +137,13 @@ export const encodeForPersist = async (input: string): Promise<string> => {
  */
 export const decodeFromPersist = async (raw: string): Promise<string> => {
   if (!raw.startsWith(SENTINEL)) return raw;
+  return TEXT_DECODER.decode(await decodePersistedGzipBytes(raw));
+};
+
+/** Read the original bytes of a GZ1 value using the normal decoder limits. */
+export const decodePersistedGzipBytes = async (
+  raw: string,
+): Promise<Uint8Array<ArrayBuffer>> => {
   const encoded = raw.slice(SENTINEL.length);
   // Reject before `atob` allocates a ~0.75 × encoded.length byte array.
   if (encoded.length > MAX_RAW_LENGTH) {

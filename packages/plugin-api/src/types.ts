@@ -622,6 +622,15 @@ export interface PluginRequestOptions extends PluginHttpOptions {
   body?: unknown;
 }
 
+export interface SaveState {
+  sync: 'ok' | 'error' | 'offline';
+  keys: Record<
+    string,
+    | { state: 'failed' | 'pending' | 'unknown' }
+    | { state: 'saved'; savedAt: string; valueSha256: string }
+  >;
+}
+
 export interface PluginAPI {
   cfg: PluginBaseCfg;
   readonly Hooks: typeof PluginHooks;
@@ -852,6 +861,9 @@ export interface PluginAPI {
   persistDataSynced(dataStr: string, key?: string): Promise<void>;
 
   loadSyncedData(key?: string): Promise<string | null>;
+
+  /** Read server confirmation for this plugin's keys. savedAt is approximate UTC. */
+  getSyncedDataSaveState(keys: string[]): Promise<SaveState>;
 
   /**
    * Requests normal sync with the configured provider from plugin.js or an iframe.

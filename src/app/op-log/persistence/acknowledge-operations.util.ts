@@ -36,6 +36,7 @@ export const acknowledgeOperations = async (
   tx: OpLogTx,
   seqs: number[],
   originals?: ReadonlyMap<string, Operation>,
+  onAcknowledged?: (entry: StoredOperationLogEntry) => void,
 ): Promise<void> => {
   const now = Date.now();
   for (const seq of seqs) {
@@ -65,5 +66,6 @@ export const acknowledgeOperations = async (
     }
     entry.syncedAt = now;
     await tx.put(STORE_NAMES.OPS, entry);
+    onAcknowledged?.(entry);
   }
 };

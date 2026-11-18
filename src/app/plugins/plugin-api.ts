@@ -28,6 +28,7 @@ import {
   ActiveWorkContext,
   PluginDayContext,
   Project,
+  SaveState,
   SnackCfg,
   Tag,
   Task,
@@ -355,6 +356,10 @@ export class PluginAPI implements PluginAPIInterface {
       keyLen: key?.length ?? 0,
     });
     return this.#boundMethods.loadPersistedData(key);
+  }
+
+  getSyncedDataSaveState(keys: string[]): Promise<SaveState> {
+    return this.#boundMethods.getSyncedDataSaveState(keys);
   }
 
   async getConfig(): Promise<any> {

@@ -51,6 +51,7 @@ const PLUGIN_API_MEMBERS: Record<keyof PluginAPIInterface, true> = {
   log: true,
   persistDataSynced: true,
   loadSyncedData: true,
+  getSyncedDataSaveState: true,
   triggerSync: true,
   listSyncedDataKeys: true,
   getConfig: true,

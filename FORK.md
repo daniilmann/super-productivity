@@ -69,6 +69,7 @@ Kinds: permanent (committed), build-time substitution (not committed), removal.
 | 7 | Disable upstream release checks for every setting and entry point | `src/app/core/update-check/is-update-check-possible.util.ts`; `src/app/core/update-check/update-check.service.ts`; `src/app/core/update-check/update-check.service.spec.ts` (removed superseded test) | permanent; removal | `src/app/core/update-check/update-check.service.fork.spec.ts`; `src/app/pages/config-page/config-page.component.fork.spec.ts`; packaged app check |
 | 8 | Hide Remove for the protected product plugin ID | `src/app/plugins/ui/plugin-management/plugin-management.component.ts`; `src/app/plugins/ui/plugin-management/plugin-management.component.html` | permanent | `src/app/plugins/ui/plugin-management/plugin-management.component.fork.spec.ts` |
 | 9 | Remove task-writing URL actions (`create-task`, `complete-task`, `task-toggle-start`); preserve UI actions and OAuth | `src/app/features/tasks/util/parse-app-uri-task-action.ts`; `src/app/features/tasks/app-uri-actions/app-uri-task-actions.service.ts`; `src/app/core/app-url-open-router.ts`; `electron/protocol-handler.ts`; `android/app/src/main/AndroidManifest.xml`; `src/app/features/tasks/util/parse-app-uri-task-action.spec.ts` and `src/app/features/tasks/app-uri-actions/app-uri-task-actions.service.spec.ts` (removed superseded tests); `src/app/core/app-url-open-router.spec.ts` and `electron/protocol-handler.test.cjs` (superseded test blocks removed); `tools/verify-android-url-hosts.test.js` (superseded test block replaced) | permanent; removal | `src/app/features/tasks/util/parse-app-uri-task-action.fork.spec.ts`; `src/app/features/tasks/app-uri-actions/app-uri-task-actions.service.fork.spec.ts`; `src/app/core/app-url-open-router.fork.spec.ts`; `electron/protocol-handler.fork.test.cjs`; `tools/verify-android-url-hosts.test.js`; packaged app checks |
+| 10 | Confirm acknowledged plugin data for the current client and exact value bytes | `src/app/op-log/persistence/operation-log-store.service.ts`; `src/app/op-log/persistence/acknowledge-operations.util.ts`; `src/app/op-log/sync/operation-log-download.service.ts`; `src/app/core/util/client-id.service.ts`; `packages/plugin-api/src/types.ts`; `src/app/plugins/plugin-api.ts`; `src/app/plugins/plugin-bridge.service.ts`; `src/app/plugins/plugin-user-persistence.service.ts`; `src/app/plugins/util/plugin-data-codec.ts`; `src/app/plugins/util/plugin-iframe.util.ts`; `src/app/plugins/util/unknown-plugin-api-member.util.ts`; `src/app/plugins/ui/plugin-index/plugin-index.component.ts` | permanent | `operation-log-store.save-confirmation.fork.spec.ts`; `save-state.service.fork.spec.ts`; `plugin-iframe.save-confirmation.fork.spec.ts`; `supersync-save-confirmation.fork.spec.ts` |
 
 ## Upstream change budget
 
@@ -130,6 +131,12 @@ The fast gate also requires `packages/shared-schema`, `packages/sync-core`, and 
 - `src/app/pages/config-page/config-page.component.fork.spec.ts`
 - `src/app/plugins/ui/plugin-management/plugin-management.component.fork.spec.ts`
 - `electron/protocol-handler.fork.test.cjs`
+- `src/app/plugins/save-confirmation/{receipt-store,save-state.service,server-clock}.ts` — receipt
+  cache, committed client and value checks, and server clock correction.
+- `src/app/plugins/save-confirmation/save-state.service.fork.spec.ts`
+- `src/app/op-log/persistence/operation-log-store.save-confirmation.fork.spec.ts`
+- `src/app/plugins/util/plugin-iframe.save-confirmation.fork.spec.ts`
+- `e2e/tests/sync/supersync-save-confirmation.fork.spec.ts`
 
 Upstream composite actions in `.github/actions/` are reused as they are.
 

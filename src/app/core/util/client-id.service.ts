@@ -70,6 +70,11 @@ export class ClientIdService {
     }
   }
 
+  /** Read the committed ID without consulting or changing the instance cache. */
+  async loadCommittedClientId(): Promise<string | null> {
+    return this._readSupOps().catch(() => null);
+  }
+
   /**
    * Returns the existing client ID, or generates and persists a new one if
    * none exists. The preferred entry point for callers that always need an ID.

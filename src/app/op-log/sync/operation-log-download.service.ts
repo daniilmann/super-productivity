@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { ServerClock } from '../../plugins/save-confirmation/server-clock';
 import {
   planDownloadFullStateUpload,
   planDownloadGapReset,
@@ -162,6 +163,7 @@ const isDecryptedPrefixKeepable = ({
   providedIn: 'root',
 })
 export class OperationLogDownloadService implements OnDestroy {
+  private readonly _serverClock = inject(ServerClock);
   private opLogStore = inject(OperationLogStoreService);
   private lockService = inject(LockService);
   private snackService = inject(SnackService);
@@ -449,6 +451,7 @@ export class OperationLogDownloadService implements OnDestroy {
           clientId ?? undefined,
           DOWNLOAD_PAGE_SIZE,
         );
+        this._serverClock.observe(response.serverTime);
         finalLatestSeq = response.latestSeq;
         OpLog.verbose(
           `OperationLogDownloadService: [DEBUG] Download response: ops=${response.ops.length}, ` +
@@ -549,6 +552,11 @@ export class OperationLogDownloadService implements OnDestroy {
           continue;
         }
 
+        // Use the current server time, including on empty pages.
+        if (response.serverTime !== undefined) {
+          this._checkClockDrift(response.serverTime);
+        }
+
         if (response.ops.length === 0) {
           if (response.hasMore) {
             OpLog.error(
@@ -558,13 +566,6 @@ export class OperationLogDownloadService implements OnDestroy {
           }
           // No ops to download - caller will persist latestServerSeq after this method returns
           break;
-        }
-
-        // Check for clock drift using server's current time (if provided)
-        // NOTE: We use serverTime (current server time) instead of receivedAt (when ops were uploaded)
-        // because receivedAt can be hours old and would falsely trigger clock drift warnings.
-        if (response.serverTime !== undefined) {
-          this._checkClockDrift(response.serverTime);
         }
 
         // When force downloading from seq 0, capture ALL op clocks (including duplicates)

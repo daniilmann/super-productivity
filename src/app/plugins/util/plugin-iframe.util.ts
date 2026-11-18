@@ -79,6 +79,7 @@ const ALLOWED_IFRAME_API_METHODS = new Set([
   'getAppState',
   'persistDataSynced',
   'loadPersistedData',
+  'getSyncedDataSaveState',
   'triggerSync',
   'listSyncedDataKeys',
   'registerHook',
@@ -453,6 +454,7 @@ export const createPluginApiScript = (config: PluginIframeConfig): string => {
           persistDataSynced: (data, key) => callApi('persistDataSynced', [data, key]),
           loadPersistedData: (key) => callApi('loadPersistedData', [key]),
           loadSyncedData: (key) => callApi('loadPersistedData', [key]), // Alias
+          getSyncedDataSaveState: (keys) => callApi('getSyncedDataSaveState', [keys]),
           triggerSync: () => callApi('triggerSync'),
           listSyncedDataKeys: (prefix) => callApi('listSyncedDataKeys', [prefix]),
 
@@ -635,6 +637,7 @@ export const buildPluginIframeHtml = (config: PluginIframeConfig): string => {
 export const handlePluginMessage = async (
   event: MessageEvent,
   config: PluginIframeConfig,
+  isCurrent: () => boolean = () => true,
 ): Promise<void> => {
   const { data } = event;
 
@@ -652,10 +655,23 @@ export const handlePluginMessage = async (
   // Handle API calls
   if (data.type === PluginIframeMessageType.API_CALL && data.callId) {
     const { method, args = [], callId } = data;
+    const source = event.source as Window | null;
 
     try {
       if (!ALLOWED_IFRAME_API_METHODS.has(method)) {
         throw new Error(`Unknown API method: ${method}`);
+      }
+
+      if (method === 'getSyncedDataSaveState') {
+        await config.boundMethods.getSyncedDataSaveState(args[0], (result) => {
+          if (isCurrent()) {
+            source?.postMessage(
+              { type: PluginIframeMessageType.API_RESPONSE, callId, result },
+              '*',
+            );
+          }
+        });
+        return;
       }
 
       // For iframe plugins, we need to handle API calls differently
@@ -848,7 +864,8 @@ export const handlePluginMessage = async (
         );
       }
     } catch (error) {
-      (event.source as Window)?.postMessage(
+      if (method === 'getSyncedDataSaveState' && !isCurrent()) return;
+      source?.postMessage(
         {
           type: PluginIframeMessageType.API_ERROR,
           callId,

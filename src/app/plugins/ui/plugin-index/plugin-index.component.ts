@@ -294,7 +294,7 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
     // Store message handler for cleanup
     // Filter by event.source so messages from other plugin iframes (side panel,
     // other embed slots) don't get answered with this plugin's bound methods.
-    this._messageListener = async (event: Event) => {
+    const listener = async (event: Event): Promise<void> => {
       const msgEvent = event as MessageEvent;
       const iframeWin = this._getPluginIframeWindow();
       if (!iframeWin || msgEvent.source !== iframeWin) {
@@ -309,8 +309,20 @@ export class PluginIndexComponent implements OnInit, OnDestroy {
       if (!this._pluginService.getPluginIndexHtml(config.pluginId)) {
         return;
       }
-      await handlePluginMessage(msgEvent, config);
+      await handlePluginMessage(
+        msgEvent,
+        config,
+        () =>
+          !this._isDestroyed &&
+          this._messageListener === listener &&
+          this.pluginId() === pluginId &&
+          this._getPluginIframeWindow() === iframeWin &&
+          this._pluginService.getPluginIframeGeneration(pluginId) ===
+            config.bridgeGeneration &&
+          !!this._pluginService.getPluginIndexHtml(pluginId),
+      );
     };
+    this._messageListener = listener;
 
     // Set up message communication
     window.addEventListener('message', this._messageListener);

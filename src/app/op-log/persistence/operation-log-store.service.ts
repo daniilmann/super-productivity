@@ -87,6 +87,7 @@ import {
   rebasePendingLocalOpsInTx,
 } from './rebase-pending-local-ops.util';
 import { acknowledgeOperations } from './acknowledge-operations.util';
+import { ReceiptStore } from '../../plugins/save-confirmation/receipt-store';
 
 export interface MixedSourceOperationBatch {
   ops: readonly Operation[];
@@ -286,6 +287,7 @@ const boundRebasedClock = (
 export class OperationLogStoreService implements RemoteOperationApplyStorePort<Operation> {
   private clientIdProvider: ClientIdProvider = inject(CLIENT_ID_PROVIDER);
   private readonly _lockService = inject(LockService);
+  private readonly _receiptStore = inject(ReceiptStore);
   // #9438 INVARIANT: every method that adds rows to STORE_NAMES.OPS must
   // report the committed seqs after its transaction commits — observeOwnWrite
   // for plain appends, establishFrontier only when the method also installs
@@ -1742,26 +1744,22 @@ export class OperationLogStoreService implements RemoteOperationApplyStorePort<O
       return new Set(this._appliedOpIdsCache);
     }
 
-    // If cache exists but is stale, incrementally add new IDs
+    // Extend a stale cache with new IDs in either stored format.
     if (this._appliedOpIdsCache && this._cacheLastSeq > 0) {
       const newEntries = await this._adapter.getAll<StoredOperationLogEntry>(
         STORE_NAMES.OPS,
         { lower: this._cacheLastSeq, lowerOpen: true },
       );
       for (const entry of newEntries) {
-        // Handle both compact and full operation formats
         this._appliedOpIdsCache.add(getOpId(entry.op));
       }
       this._cacheLastSeq = currentLastSeq;
       return new Set(this._appliedOpIdsCache);
     }
-
-    // Initial cache build - full scan required
+    // Initial build scans all rows in either stored format.
     const entries = await this._adapter.getAll<StoredOperationLogEntry>(STORE_NAMES.OPS);
-    // Handle both compact and full operation formats
     this._appliedOpIdsCache = new Set(entries.map((e) => getOpId(e.op)));
     this._cacheLastSeq = currentLastSeq;
-
     return new Set(this._appliedOpIdsCache);
   }
 
@@ -1769,11 +1767,13 @@ export class OperationLogStoreService implements RemoteOperationApplyStorePort<O
     seqs: number[],
     originals?: ReadonlyMap<string, Operation>,
   ): Promise<void> {
-    await this._ensureInit();
-    await this._adapter.transaction([STORE_NAMES.OPS], 'readwrite', (tx) =>
-      acknowledgeOperations(tx, seqs, originals),
-    );
-    this._invalidateUnsyncedCache();
+    await this._receiptStore.recordAcknowledgement(async (collect) => {
+      await this._ensureInit();
+      await this._adapter.transaction([STORE_NAMES.OPS], 'readwrite', (tx) =>
+        acknowledgeOperations(tx, seqs, originals, collect),
+      );
+      this._invalidateUnsyncedCache();
+    });
   }
 
   async markRejected(opIds: string[]): Promise<void> {
