@@ -27,7 +27,7 @@ import {
   mountPlugin,
   rpc,
   saved,
-} from './plugin-iframe-save-confirmation.test-fixture';
+} from './testing/plugin-iframe-save-confirmation.test-fixture';
 import { createPluginApiScript, handlePluginMessage } from './plugin-iframe.util';
 
 const UNKNOWN = { state: 'unknown' } as const;

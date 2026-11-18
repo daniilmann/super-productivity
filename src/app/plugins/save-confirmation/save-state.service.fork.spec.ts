@@ -28,7 +28,7 @@ import {
   gzip,
   holdCompressionWrite,
   replaceStateFromOtherTab,
-} from './save-state.test-fixture';
+} from './testing/save-state.test-fixture';
 
 const UNKNOWN = { state: 'unknown' } as const;
 
