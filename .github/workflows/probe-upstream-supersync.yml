@@ -1,0 +1,142 @@
+name: Complete upstream SuperSync shards
+
+on:
+  push:
+    branches: [codex/probe-upstream-supersync-8a861d9dca]
+
+permissions:
+  contents: read
+
+env:
+  CANDIDATE_SHA: 8a861d9dca2a900370ba24439a8f088d84fee090
+  COMPOSE_PROJECT_NAME: upstream-supersync-sharded
+  CI: 'true'
+
+jobs:
+  prepare:
+    name: Collect the full corpus and build its web application
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify the test-only probe and check out the exact candidate
+        run: &checkout-candidate |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD^)" == "$CANDIDATE_SHA" ]]
+          [[ "$(git diff --name-only "$CANDIDATE_SHA" HEAD)" == '.github/workflows/probe-upstream-supersync.yml' ]]
+          git checkout --detach "$CANDIDATE_SHA"
+          [[ -z "$(git status --porcelain)" ]]
+          printf 'Tested source %s\n' "$CANDIDATE_SHA"
+      - uses: ./.github/actions/setup-deps
+      - run: npm run buildFrontend:e2e
+      - name: Collect exact tests and package verified inputs
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/supersync-inputs"
+          mkdir "$out"
+          export PLAYWRIGHT_JSON_OUTPUT_FILE="$RUNNER_TEMP/corpus.json"
+          npm run e2e:all -- --grep @supersync --list --reporter=json > "$RUNNER_TEMP/corpus.txt"
+          jq -er '
+            .suites[] | recurse(.suites[]?) | .specs[]? as $spec
+            | $spec.tests[] | [$spec.file, $spec.id, .projectId] | @tsv
+          ' "$PLAYWRIGHT_JSON_OUTPUT_FILE" | LC_ALL=C sort > "$out/corpus.tsv"
+          [[ "$(wc -l < "$out/corpus.tsv")" -eq 496 ]]
+          [[ "$(LC_ALL=C sort -u "$out/corpus.tsv" | wc -l)" -eq 496 ]]
+          test -s .tmp/angular-dist/browser/index.html
+          tar -czf "$out/web.tar.gz" -C .tmp/angular-dist .
+          printf '%s\n' "$CANDIDATE_SHA" > "$out/source.txt"
+          (cd "$out" && sha256sum web.tar.gz corpus.tsv source.txt > sha256sums.txt)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: supersync-inputs-${{ env.CANDIDATE_SHA }}
+          path: ${{ runner.temp }}/supersync-inputs
+          if-no-files-found: error
+          retention-days: 2
+
+  supersync:
+    name: Upstream SuperSync shard ${{ matrix.shard }}/8
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Check out the exact candidate
+        run: *checkout-candidate
+      - uses: ./.github/actions/setup-e2e
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # pinned
+        with:
+          name: supersync-inputs-${{ env.CANDIDATE_SHA }}
+          path: ${{ runner.temp }}/supersync-inputs
+      - name: Restore the web build from the same candidate
+        run: |
+          set -euo pipefail
+          in="$RUNNER_TEMP/supersync-inputs"
+          (cd "$in" && sha256sum --check sha256sums.txt)
+          [[ "$(cat "$in/source.txt")" == "$CANDIDATE_SHA" ]]
+          mkdir -p .tmp/angular-dist
+          tar -xzf "$in/web.tar.gz" -C .tmp/angular-dist
+          test -s .tmp/angular-dist/browser/index.html
+      - name: Run this shard against the real test SuperSync
+        env:
+          SHARD: ${{ matrix.shard }}
+          PLAYWRIGHT_JSON_OUTPUT_FILE: ${{ runner.temp }}/supersync-report.json
+        run: |
+          set -euo pipefail
+          npm run e2e:supersync -- --shard="$SHARD/8" --reporter=list,json
+          out="$RUNNER_TEMP/supersync-results"
+          mkdir "$out"
+          jq -er '
+            [.suites[] | recurse(.suites[]?) | .specs[]? as $s | $s.tests[] | { file: $s.file, id: $s.id, test: . }] as $rows
+            | if ($rows|length) == 0 or any($rows[];
+                (.test | ((.expectedStatus == "passed" and .status == "expected" and
+                  (.results | length) > 0 and all(.results[]; .status == "passed")) or
+                  (.expectedStatus == "skipped" and .status == "skipped")) | not))
+              then error("Missing, failed, pending, or flaky upstream tests")
+              else $rows[] | [.file,.id,.test.projectId,.test.status] | @tsv end
+          ' "$PLAYWRIGHT_JSON_OUTPUT_FILE" > "$out/results-$SHARD.tsv"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: supersync-results-${{ env.CANDIDATE_SHA }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/supersync-results
+          if-no-files-found: error
+          retention-days: 2
+
+  evidence:
+    name: Verify all 496 selected tests are accounted for
+    needs: [prepare, supersync]
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # pinned
+        with:
+          name: supersync-inputs-${{ env.CANDIDATE_SHA }}
+          path: ${{ runner.temp }}/supersync-inputs
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # pinned
+        with:
+          pattern: supersync-results-${{ env.CANDIDATE_SHA }}-*
+          path: ${{ runner.temp }}/supersync-results
+          merge-multiple: true
+      - name: Compare the reports to the unsharded corpus
+        run: |
+          set -euo pipefail
+          in="$RUNNER_TEMP/supersync-inputs"
+          out="$RUNNER_TEMP/supersync-results"
+          (cd "$in" && sha256sum --check sha256sums.txt)
+          [[ "$(cat "$in/source.txt")" == "$CANDIDATE_SHA" ]]
+          for shard in {1..8}; do test -s "$out/results-$shard.tsv"; done
+          cut -f1-3 "$out"/results-*.tsv | LC_ALL=C sort > "$RUNNER_TEMP/actual.tsv"
+          diff -u "$in/corpus.tsv" "$RUNNER_TEMP/actual.tsv"
+          printf 'SHA %s, tests across all shards: %s\n' "$CANDIDATE_SHA" "$(wc -l < "$RUNNER_TEMP/actual.tsv")"
+          cut -f4 "$out"/results-*.tsv | LC_ALL=C sort | uniq -c
