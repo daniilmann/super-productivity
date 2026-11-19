@@ -1,0 +1,214 @@
+name: Verify published fork DMG startup
+
+on:
+  push:
+    branches: [codex/probe-published-dmg-41202d5781]
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    if: github.repository == 'daniilmann/super-productivity'
+    runs-on: macos-15
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: bash
+    env:
+      FORK_REPO: daniilmann/super-productivity
+      SOURCE_SHA: 41202d578128a2117e245e108b940f6a31e9b6e2
+      APP_VERSION: 20.0.0-fork.6
+      DMG_NAME: superProductivityTelos-arm64.dmg
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - name: Fetch the published release asset and expected digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v20.0.0-fork.6
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" == "v$APP_VERSION" ]]
+          tag_ref="refs/tags/$RELEASE_TAG"
+          tag_lines="$(git ls-remote --exit-code "$GITHUB_SERVER_URL/$FORK_REPO.git" "$tag_ref" "$tag_ref^{}")"
+          target="$(awk -v ref="$tag_ref^{}" '$2 == ref {print $1}' <<< "$tag_lines")"
+          [[ "$target" == "$SOURCE_SHA" ]]
+          digest="$(gh api "repos/$FORK_REPO/releases/tags/$RELEASE_TAG" |
+            jq -er --arg tag "$RELEASE_TAG" --arg name "$DMG_NAME" '
+              select(.tag_name == $tag and .draft == false and .prerelease == false)
+              | [.assets[] | select(.name == $name and .state == "uploaded" and .size > 0)]
+              | select(length == 1) | .[0].digest
+              | capture("^sha256:(?<hex>[0-9a-f]{64})$").hex')"
+          mkdir -p "$RUNNER_TEMP/dmg-input"
+          curl --disable --fail --silent --show-error --location --proto '=https' --max-time 180 \
+            --output "$RUNNER_TEMP/dmg-input/$DMG_NAME" "$GITHUB_SERVER_URL/$FORK_REPO/releases/download/$RELEASE_TAG/$DMG_NAME"
+          printf 'DMG_SHA256=%s\n' "$digest" >> "$GITHUB_ENV"
+      - name: Verify and start the intact DMG
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          smoke="$RUNNER_TEMP/dmg-smoke.sh"
+          cat > "$smoke" <<'SMOKE_BASH'
+          #!/bin/bash
+          set -euo pipefail
+
+          fail() { printf '%s\n' "$*" >&2; exit 1; }
+          [[ $# == 4 ]] || fail "usage: $0 DMG RELEASE_SHA256 APP_VERSION SOURCE_LICENSE"
+          [[ "${RUNNER_ENVIRONMENT:-}" == github-hosted ]] || fail 'Use a disposable GitHub-hosted runner.'
+          [[ "$(uname -m)" == arm64 && "$(uname -s)" == Darwin ]] || fail 'Expected macOS arm64.'
+
+          dmg=$1
+          digest=$2
+          version=$3
+          license=$4
+          [[ "$digest" =~ ^[0-9a-f]{64}$ ]] || fail 'Invalid DMG SHA-256.'
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-fork\.[1-9][0-9]{0,2}$ ]] || fail 'Invalid app version.'
+          test -s "$dmg"
+          test -s "$license"
+          printf '%s  %s\n' "$digest" "$dmg" | /usr/bin/shasum -a 256 -c -
+          /usr/bin/hdiutil verify "$dmg"
+
+          probe="$(mktemp -d "${RUNNER_TEMP:?}/dmg-smoke.XXXXXX")"
+          mount="$probe/mount"
+          profile="$probe/profile"
+          startup_log="$probe/startup.log"
+          mkdir "$mount" "$profile"
+          app=''
+          app_pid=''
+          attached=false
+          last_processes="$probe/processes.txt"
+          : > "$last_processes"
+
+          process_inventory() {
+            /bin/ps -axo pid=,ppid=,command= | /usr/bin/awk -v root="$app_pid" -v bundle="$app/Contents/" '
+              $1 ~ /^[0-9]+$/ {
+                parent[$1] = $2
+                renderer[$1] = /(^|[[:space:]])--type=renderer([[:space:]]|$)/
+                command = $0
+                sub(/^[[:space:]]*[0-9]+[[:space:]]+[0-9]+[[:space:]]+/, "", command)
+                if (index(command, bundle) == 1) descendant[$1] = 1
+              }
+              END {
+                descendant[root] = 1
+                do {
+                  changed = 0
+                  for (pid in parent)
+                    if (!descendant[pid] && descendant[parent[pid]]) {
+                      descendant[pid] = 1
+                      changed = 1
+                    }
+                } while (changed)
+                for (pid in parent)
+                  if (descendant[pid]) print pid, renderer[pid] ? "renderer" : "app"
+              }'
+          }
+
+          cleanup() {
+            local result=$? pid
+            if [[ -n "$app_pid" ]]; then
+              process_inventory >> "$last_processes" 2>/dev/null || true
+              # The saved list covers helpers that become orphaned when the app quits.
+              /usr/bin/awk '{print $1}' "$last_processes" | /usr/bin/sort -nu > "$probe/owned-pids.txt"
+              while IFS= read -r pid; do
+                if /bin/ps -p "$pid" -o command= | /usr/bin/grep -Fq "$app/Contents/"; then
+                  kill -TERM "$pid" 2>/dev/null || true
+                fi
+              done < "$probe/owned-pids.txt"
+              for ((i=0; i<20; i++)); do
+                kill -0 "$app_pid" 2>/dev/null || break
+                sleep 0.25
+              done
+              while IFS= read -r pid; do
+                if /bin/ps -p "$pid" -o command= | /usr/bin/grep -Fq "$app/Contents/"; then
+                  kill -KILL "$pid" 2>/dev/null || true
+                fi
+              done < "$probe/owned-pids.txt"
+              wait "$app_pid" 2>/dev/null || true
+              while IFS= read -r pid; do
+                if /bin/ps -p "$pid" -o command= | /usr/bin/grep -Fq "$app/Contents/"; then
+                  result=1
+                fi
+              done < "$probe/owned-pids.txt"
+            fi
+            if "$attached"; then /usr/bin/hdiutil detach "$mount" || result=1; fi
+            if [[ "$result" != 0 && -f "$startup_log" ]]; then /usr/bin/tail -100 "$startup_log" >&2; fi
+            exit "$result"
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+
+          /usr/bin/hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$dmg"
+          attached=true
+          shopt -s nullglob
+          apps=("$mount"/*.app)
+          [[ "${#apps[@]}" == 1 ]] || fail 'Expected one application in the DMG.'
+          app="$probe/$(basename "${apps[0]}")"
+          /usr/bin/ditto "${apps[0]}" "$app"
+          /usr/bin/hdiutil detach "$mount"
+          attached=false
+
+          plist="$app/Contents/Info.plist"
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == io.github.daniilmann.sptelos ]]
+          [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]]
+          /usr/bin/cmp "$license" "$app/Contents/Resources/LICENSE"
+          /usr/bin/codesign --verify --deep --strict "$app"
+          signature="$(/usr/bin/codesign -dv --verbose=2 "$app" 2>&1)"
+          /usr/bin/grep -Fx 'Signature=adhoc' <<< "$signature"
+          exe="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$plist")"
+          [[ -x "$app/Contents/MacOS/$exe" && "$exe" != */* ]]
+
+          startup_failure='[!]?crashed, reason:|sandbox_apply.*(failed|denied|not permitted)|failed to (initialize|instantiate).*sandbox|sandbox.*(initialization failed|operation not permitted)|GPU process isn.t usable|Failed to load URL|ERR_FILE_NOT_FOUND|Failed to initialize plugin system:|FATAL:'
+          readiness='CONSOLE.*Plugin system initialized after sync completed.*(app\.asar|angular-dist)'
+          check_failure_log() {
+            if /usr/bin/grep -Ei "$startup_failure" "$startup_log"; then
+              fail 'App reported a startup failure.'
+            fi
+          }
+
+          "$app/Contents/MacOS/$exe" "--user-data-dir=$profile" --enable-logging=stderr --log-level=0 > "$startup_log" 2>&1 &
+          app_pid=$!
+          ready=''
+          for ((i=0; i<60; i++)); do
+            kill -0 "$app_pid" 2>/dev/null || fail 'App main process stopped before renderer readiness.'
+            check_failure_log
+            if /usr/bin/grep -E "$readiness" "$startup_log" > "$probe/renderer-ready.txt"; then
+              process_inventory > "$last_processes"
+              ready="$(/usr/bin/awk '$2=="renderer" {print $1; exit}' "$last_processes")"
+              [[ -z "$ready" ]] || break
+            fi
+            sleep 1
+          done
+          [[ -n "$ready" ]] || fail 'Angular readiness log and live renderer not observed.'
+          cat "$probe/renderer-ready.txt"
+          printf 'Renderer ready; main pid=%s, renderer pid=%s\n' "$app_pid" "$ready"
+
+          check_sockets() {
+            local label=$1 result=0
+            shift
+            /usr/sbin/lsof -nP -a -p "$pids" "$@" > "$probe/${label}.txt" 2> "$probe/${label}.err" || result=$?
+            [[ ! -s "$probe/${label}.err" ]] || { cat "$probe/${label}.err" >&2; fail "lsof $label failed."; }
+            if [[ "$result" != 1 || -s "$probe/${label}.txt" ]]; then
+              cat "$probe/${label}.txt"
+              fail "Unexpected $label sockets or lsof exit $result."
+            fi
+          }
+
+          for ((sample=0; sample<4; sample++)); do
+            kill -0 "$app_pid" 2>/dev/null || fail 'App main process stopped after renderer readiness.'
+            check_failure_log
+            process_inventory > "$last_processes"
+            /usr/bin/awk -v renderer="$ready" '$1==renderer && $2=="renderer" {seen=1} END {exit !seen}' "$last_processes" ||
+              fail 'The ready renderer disappeared during the observation window.'
+            pids="$(/usr/bin/awk '{print $1}' "$last_processes" | /usr/bin/paste -s -d ',' -)"
+            check_sockets tcp-listen -iTCP -sTCP:LISTEN
+            check_sockets udp -iUDP
+            if [[ "$sample" != 3 ]]; then sleep 4; fi
+          done
+          check_failure_log
+          printf 'Renderer sustained for 12 seconds. No app-process TCP listeners or UDP sockets in four samples.\n'
+          SMOKE_BASH
+          bash "$smoke" "$RUNNER_TEMP/dmg-input/$DMG_NAME" "$DMG_SHA256" "$APP_VERSION" LICENSE
