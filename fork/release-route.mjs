@@ -195,10 +195,36 @@ function productionInputs(root, statsFile) {
     !isRecord(graph) ||
     !isRecord(graph.inputs) ||
     !isRecord(graph.outputs) ||
-    !Object.values(graph.inputs).every(isRecord) ||
-    !Object.values(graph.outputs).every(isRecord)
+    !Object.values(graph.inputs).every(isRecord)
   ) {
     throw new Error(`invalid Angular build graph ${statsFile}`);
+  }
+  for (const [file, output] of Object.entries(graph.outputs)) {
+    if (!isRecord(output) || !isRecord(output.inputs)) {
+      throw new Error(
+        `incomplete Angular build graph ${statsFile}: output ${file} needs an inputs map`,
+      );
+    }
+    for (const input of Object.keys(output.inputs)) {
+      if (!Object.hasOwn(graph.inputs, input)) {
+        throw new Error(
+          `incomplete Angular build graph ${statsFile}: output ${file} references missing input ${input}`,
+        );
+      }
+    }
+    if (Object.hasOwn(output, 'entryPoint')) {
+      const { entryPoint } = output;
+      if (typeof entryPoint !== 'string') {
+        throw new Error(
+          `invalid Angular build graph ${statsFile}: output ${file} has a non-string entryPoint`,
+        );
+      }
+      if (!Object.hasOwn(graph.inputs, entryPoint)) {
+        throw new Error(
+          `incomplete Angular build graph ${statsFile}: output ${file} has missing entryPoint input ${entryPoint}`,
+        );
+      }
+    }
   }
   const inputs = new Set(
     Object.keys(graph.inputs).map((file) =>
