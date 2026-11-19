@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseTag, versionCode } from './apply-identity.mjs';
 
@@ -177,16 +177,62 @@ export function fastNotes(superSync) {
   return `Быстрый выпуск. Не прогонялись: ${skipped.join(', ')}`;
 }
 
-/** @param {string} root @param {string} dir */
-export function checkWebSpecs(root, dir) {
-  const specs = git(root, 'ls-files', '--', ':(glob)src/**/*.fork.spec.ts').trim();
-  if (!specs) throw new Error('no fork Angular specs found');
-  const titles = specs.split('\n').map((file) => {
-    const title = /\bdescribe\('([^']+)'/.exec(
-      readFileSync(join(root, file), 'utf8'),
-    )?.[1];
-    if (!title) throw new Error(`no suite title in ${file}`);
-    return title;
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {string} root @param {string} statsFile */
+function productionInputs(root, statsFile) {
+  /** @type {unknown} */
+  let graph;
+  try {
+    graph = JSON.parse(readFileSync(statsFile, 'utf8'));
+  } catch (cause) {
+    throw new Error(`cannot read Angular build graph ${statsFile}`, { cause });
+  }
+  if (
+    !isRecord(graph) ||
+    !isRecord(graph.inputs) ||
+    !isRecord(graph.outputs) ||
+    !Object.values(graph.inputs).every(isRecord) ||
+    !Object.values(graph.outputs).every(isRecord)
+  ) {
+    throw new Error(`invalid Angular build graph ${statsFile}`);
+  }
+  const inputs = new Set(
+    Object.keys(graph.inputs).map((file) =>
+      relative(root, resolve(root, file.replaceAll('\\', '/')))
+        .split(sep)
+        .join('/'),
+    ),
+  );
+  if (
+    !inputs.has('src/main.ts') ||
+    !Object.keys(graph.outputs).some((file) => file.endsWith('.js'))
+  ) {
+    throw new Error(
+      `incomplete Angular build graph ${statsFile}: expected src/main.ts and JavaScript output`,
+    );
+  }
+  return inputs;
+}
+
+/** @param {string} root @param {string} dir @param {string} statsFile */
+export function checkWebSpecs(root, dir, statsFile) {
+  const specs = git(root, 'ls-files', '-z', '--', ':(glob)src/**/*.fork.spec.ts')
+    .split('\0')
+    .filter(Boolean);
+  if (!specs.length) throw new Error('no fork Angular specs found');
+  const inputs = productionInputs(root, statsFile);
+  const spec = specs.find((file) => inputs.has(file));
+  if (spec) throw new Error(`fork Angular spec ${spec} found in ${statsFile} inputs`);
+  const titles = specs.flatMap((file) => {
+    const source = readFileSync(join(root, file), 'utf8');
+    return Array.from(
+      source.matchAll(/\bdescribe\(\s*(['"])(.+?)\1/g),
+      (match) => match[2],
+    );
   });
   const bundles = readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter((file) =>
     file.endsWith('.js'),
@@ -197,7 +243,9 @@ export function checkWebSpecs(root, dir) {
     const title = titles.find((name) => js.includes(name));
     if (title) throw new Error(`fork Angular suite "${title}" found in ${file}`);
   }
-  console.log(`Checked ${String(titles.length)} fork Angular suites against ${dir}`);
+  console.log(
+    `Checked ${String(specs.length)} fork Angular spec paths in ${statsFile} and ${String(titles.length)} suite titles in ${dir}`,
+  );
 }
 
 /** @param {string} repository */
@@ -224,8 +272,10 @@ function main([command, arg, oid], env) {
     tagCode(arg);
   } else if (command === 'verify-tag' && arg && oid) {
     verifyTag('.', arg, oid);
-  } else if (command === 'check-web-specs' && arg) {
-    checkWebSpecs('.', arg);
+  } else if (command === 'check-web-specs') {
+    if (!arg || !oid)
+      throw new Error('expected check-web-specs <built-dir> <browser-stats.json>');
+    checkWebSpecs('.', arg, oid);
   } else if (command === 'inspect-tag') {
     const route = inspectTag('.', {
       event: env.GITHUB_EVENT_NAME ?? '',

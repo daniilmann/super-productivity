@@ -525,7 +525,12 @@ jobs:
       - name: Build
         run: |
           set -euo pipefail
-          npm run buildFrontend:prod:es6
+          npm run prebuild
+          BROWSERSLIST_ENV=modern npm exec -- ng build --configuration production --stats-json
+          npm run removeWOFF1
+          node fork/release-route.mjs check-web-specs .tmp/angular-dist .tmp/angular-dist/browser-stats.json
+          # electron-builder packages the entire Angular output tree.
+          rm .tmp/angular-dist/browser-stats.json
           npm run electron:build
           npx electron-builder --mac --config fork/electron-builder.fork.yaml --publish never
       - name: Check artifacts
@@ -569,7 +574,6 @@ jobs:
           [ -s spec-titles.txt ]
           if grep -rFf spec-titles.txt .tmp/angular-dist; then echo "::error::spec titles found in the build"; exit 1; fi
           echo "no spec titles in the build"
-          node fork/release-route.mjs check-web-specs .tmp/angular-dist
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mac-dmg
@@ -612,8 +616,8 @@ jobs:
       - name: Web build and Capacitor sync
         run: |
           set -euo pipefail
-          npm run buildFrontend:prodWeb
-          node fork/release-route.mjs check-web-specs dist/browser
+          npm run buildFrontend:prodWeb -- --stats-json
+          node fork/release-route.mjs check-web-specs dist/browser dist/browser-stats.json
           # The fork LICENSE ships in the APK as assets/public/LICENSE.
           cp LICENSE dist/browser/LICENSE
           npm run sync:android
@@ -769,11 +773,11 @@ jobs:
       - name: Web build
         run: |
           set -euo pipefail
-          npm run buildFrontend:prodWeb
+          npm run buildFrontend:prodWeb -- --stats-json
           # productionWeb writes to dist/browser (angular.json).
           dir=dist/browser
           [ -f "$dir/index.html" ] || { echo "::error::no $dir/index.html"; exit 1; }
-          node fork/release-route.mjs check-web-specs "$dir"
+          node fork/release-route.mjs check-web-specs "$dir" dist/browser-stats.json
           cp LICENSE "$dir/LICENSE"
           (cd "$dir" && zip -qr "$GITHUB_WORKSPACE/release-assets/superProductivityTelos-web.zip" .)
           unzip -p release-assets/superProductivityTelos-web.zip LICENSE | cmp - LICENSE
