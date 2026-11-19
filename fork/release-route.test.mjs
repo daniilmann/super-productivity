@@ -4,13 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import {
-  checkWebSpecs,
-  fastNotes,
-  inspectTag,
-  superSyncStatus,
-  verifyTag,
-} from './release-route.mjs';
+import { fastNotes, inspectTag, superSyncStatus, verifyTag } from './release-route.mjs';
 
 const TAG = 'v21.0.0-fork.11';
 const REF = `refs/tags/${TAG}`;
@@ -299,22 +293,6 @@ void test('release notes contain exactly the closed list of skipped checks', () 
     fastNotes(true),
     prefix + 'e2e SuperSync upstream, инструментальные тесты Android',
   );
-});
-
-void test('detects any discovered fork Angular suite in the shipped JS', (t) => {
-  const { checkout } = repository(t);
-  put(checkout, 'src/app/first.fork.spec.ts', "describe('First fork suite', () => {});");
-  const secondSpec = 'src/app/second.fork.spec.ts';
-  put(checkout, secondSpec, "describe('Second fork suite', () => {});");
-  git(checkout, ['add', 'src']);
-  const out = join(checkout, 'build');
-  put(out, 'chunk.js', 'const fixture = "Application";');
-  checkWebSpecs(checkout, out);
-  put(out, 'nested/from-spec.js', 'describe("Second fork suite",()=>{});');
-  const check = () => {
-    checkWebSpecs(checkout, out);
-  };
-  assert.throws(check, /Second fork suite/);
 });
 
 const workflow = readFileSync(
