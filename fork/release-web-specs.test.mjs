@@ -105,7 +105,8 @@ for (const [label, spec] of [
   });
 }
 
-for (const { problem, report } of [
+const mainOutput = cleanBrowserStats.outputs['main.js'];
+for (const { problem, report, spec = forkSuiteSpec } of [
   { problem: 'is missing' },
   { problem: 'contains malformed JSON', report: '{' },
   {
@@ -120,9 +121,39 @@ for (const { problem, report } of [
     problem: 'omits the recorded entry point from its inputs',
     report: JSON.stringify({ ...cleanBrowserStats, inputs: {} }),
   },
+  {
+    problem: 'references a tracked titleless fork helper only in an output inputs map',
+    spec: titlelessForkSpecs[0],
+    report: JSON.stringify({
+      ...cleanBrowserStats,
+      outputs: {
+        'main.js': {
+          ...mainOutput,
+          inputs: {
+            ...mainOutput.inputs,
+            [titlelessForkSpecs[0]]: { bytesInOutput: 1 },
+          },
+        },
+      },
+    }),
+  },
+  {
+    problem: 'has null instead of an output inputs map',
+    report: JSON.stringify({
+      ...cleanBrowserStats,
+      outputs: { 'main.js': { ...mainOutput, inputs: null } },
+    }),
+  },
+  {
+    problem: 'has an unresolved output entry point despite valid output inputs',
+    report: JSON.stringify({
+      ...cleanBrowserStats,
+      outputs: { 'main.js': { ...mainOutput, entryPoint: 'src/missing-entry.ts' } },
+    }),
+  },
 ]) {
   void test(`rejects clean shipped JS when the production graph ${problem}`, (t) => {
-    const { checkout, out, statsFile } = webBuild(t, forkSuiteSpec);
+    const { checkout, out, statsFile } = webBuild(t, spec);
     if (report !== undefined) writeFileSync(statsFile, report);
 
     assert.throws(() => {
